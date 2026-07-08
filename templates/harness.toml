@@ -1,0 +1,7 @@
+# .harness.toml — the only configuration the harness accepts.
+
+reviewer_model = ""        # cross-model reviewer: "model", or "adapter/model" to review on a
+                           # different CLI (e.g. "claude/claude-opus-4-8" while HARNESS_ADAPTER=kiro)
+fanout_cap = 2             # max parallel implementer tasks (enforced from build step 4)
+review_blocking = true     # if true, a "concerns" verdict also fails G2.5
+diff_budget_lines = 400    # max added+removed lines per task diff

@@ -1,0 +1,98 @@
+# harness
+
+A thin terminal harness that drives systematic software development by
+orchestrating agent CLIs through **mechanical quality gates**. A convention
+plus a small CLI, not an application. See [HARNESS-PLAN.md](HARNESS-PLAN.md)
+for the full design.
+
+> **Gates, not virtue.** An agent cannot advance a phase; only a passing gate
+> (exit 0) can.
+
+## Pipeline
+
+```
+SPEC ──G0──▶ PLAN ──G1──▶ IMPLEMENT ──G2──▶ REVIEW ──G2.5──▶ HUMAN ──G3──▶ MERGE ──▶ WRITEBACK
+```
+
+| Gate | Checks |
+|---|---|
+| G0 | SPEC.md exists, has acceptance criteria, human set `Status: approved` |
+| G1 | Plan references only real files/symbols; fan-out scopes disjoint |
+| G2 | Repo's **own** lint/typecheck/tests pass; diff budget; scope respected. Refuses (exit 2) repos with no toolchain |
+| G2.5 | Fresh-context, read-only reviewer verdict: `pass` / `concerns` / `blocking` |
+| G3 | A human reads the diff. Interactive only — never automated |
+
+## Quickstart
+
+```sh
+export PATH="$PATH:/path/to/harness/bin"
+cp templates/PRINCIPLES.md ~/.harness/PRINCIPLES.md   # once, globally
+
+cd yourrepo                    # must be git, must have its own lint/test config
+harness init                   # .tasks/, decisions/, AGENTS.md, .harness.toml
+harness spec add-retry         # scaffold .tasks/add-retry/SPEC.md
+$EDITOR .tasks/add-retry/SPEC.md   # write it; set "Status: approved"
+
+harness plan add-retry         # G0 → planner agent → PLAN.md → G1
+harness implement add-retry    # implementer agent → G2 (lint/tests/scope/budget)
+harness review add-retry       # fresh-context reviewer → review.md → G2.5
+harness approve add-retry      # G3: you read the diff
+harness merge add-retry        # commit + decisions/ record
+```
+
+`harness status <task>` shows gate progress; `harness gate g2 <task>` re-runs a
+single gate. Re-running a phase invalidates its gate and everything downstream.
+
+## Adapters
+
+`HARNESS_ADAPTER` selects the agent CLI (default `claude`; also `kiro`).
+Roles keep their permissions on every runtime: the Kiro adapter generates
+custom agents in `~/.kiro/agents/` whose `tools`/`toolsSettings` enforce
+read-only planner/reviewer and a no-commit implementer.
+
+```sh
+HARNESS_ADAPTER=kiro harness implement add-retry
+```
+
+Cross-CLI review is one config line — `reviewer_model = "adapter/model"`
+(e.g. `"claude/claude-opus-4-8"` while implementing with Kiro) routes G2.5's
+reviewer through a different CLI and model than the implementer.
+
+## Reviewer calibration
+
+An LLM judge is trusted only once validated against human labels. Every G2.5
+verdict and every G3 decision is logged to the task's `events.jsonl`, and
+
+```sh
+harness calibrate
+```
+
+pairs them chronologically and prints the confusion matrix with TPR (≥ 0.80)
+and TNR (≥ 0.70) targets. If the reviewer isn't clearing those after ~20
+labeled pairs, fix `roles/reviewer.md` or change `reviewer_model` — don't
+trust the gate.
+
+## Layout
+
+```
+bin/harness        CLI dispatcher + pipeline sequencing
+lib/common.sh      config, plan parsing helpers
+gates/             one executable per gate, exit 0/1 (2 = refused)
+adapters/          run(role, task_dir, workdir); claude.sh for now
+roles/             planner / implementer / reviewer — prompt + permissions, nothing more
+templates/         SPEC.md, AGENTS.md, PRINCIPLES.md, .harness.toml
+```
+
+Per-repo config is [4 lines of TOML](templates/harness.toml). No other
+configuration exists. `harness loc` checks the ~1,500-line budget.
+
+## Build order status
+
+| Step | Deliverable | Status |
+|---|---|---|
+| 1 | Layout, gates G0–G3, Claude adapter, single-task flow | ✅ built |
+| 2 | `ctx` tooling (map/sym/grep/doc) + steering rule | — |
+| 3 | Worktree + container isolation | — |
+| 4 | zmx fan-out, `zmx wait` join, G1 disjoint-scope (check already in G1) | — |
+| 5 | Second adapter + cross-model review | ✅ kiro.sh + `reviewer_model = "adapter/model"` (Copilot pending) |
+| 6 | Writeback to Obsidian vault (decisions/ writeback already in `merge`) | — |

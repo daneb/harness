@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# harness — thin orchestrator for the gated agent pipeline.
+# SPEC ─G0─▶ PLAN ─G1─▶ IMPLEMENT ─G2─▶ REVIEW ─G2.5─▶ HUMAN ─G3─▶ MERGE ─▶ WRITEBACK
+set -euo pipefail
+HARNESS_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "$HARNESS_HOME/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+harness — gated agent pipeline (gates, not virtue)
+
+  harness init [dir]          set up .tasks/, decisions/, AGENTS.md, .harness.toml
+  harness spec <task>         scaffold .tasks/<task>/SPEC.md (then: write it, approve it)
+  harness plan <task>         G0, then planner agent writes PLAN.md, then G1
+  harness implement <task>    implementer agent edits the tree, then G2
+  harness review <task>       fresh-context reviewer writes review.md, then G2.5
+  harness approve <task>      G3 — you read the diff (interactive, never automated)
+  harness merge <task>        commit + decision record (requires G3 approval)
+  harness gate <g> <task>     run one gate manually (g0|g1|g2|g2.5|g3)
+  harness status <task>       show gate progress
+  harness calibrate           reviewer verdicts vs your G3 decisions (TPR/TNR)
+  harness loc                 line count vs the ~1500-line budget
+
+Adapter: $HARNESS_ADAPTER (default "claude") selects adapters/<name>.sh
+EOF
+  exit "${1:-0}"
+}
+
+cmd="${1:-help}"; [ $# -gt 0 ] && shift
+adapter="$HARNESS_HOME/adapters/${HARNESS_ADAPTER:-claude}.sh"
+GATES="g0 g1 g2 g2.5 g3"
+
+need_task() {
+  name="${1:-}"
+  [ -n "$name" ] || die "usage: harness $cmd <task-name>"
+  root="$(repo_root .)"
+  td="$root/.tasks/$name"
+}
+
+require_pass() {
+  [ -f "$td/report/$1.pass" ] \
+    || die "gate $1 has not passed for '$name' — the pipeline advances only through gates"
+}
+
+# Re-running a phase invalidates that gate and everything after it.
+invalidate_from() {
+  local hit=0 g
+  for g in $GATES; do
+    [ "$g" = "$1" ] && hit=1
+    [ "$hit" -eq 1 ] && rm -f "$td/report/$g.pass"
+  done
+}
+
+run_gate() {
+  local g="$1" script
+  case "$g" in
+    g0)   script="g0-spec.sh"   ;;
+    g1)   script="g1-plan.sh"   ;;
+    g2)   script="g2-diff.sh"   ;;
+    g2.5) script="g25-review.sh";;
+    g3)   script="g3-human.sh"  ;;
+    *)    die "unknown gate: $g (g0|g1|g2|g2.5|g3)";;
+  esac
+  mkdir -p "$td/report"
+  rm -f "$td/report/$g.pass"
+  local t0 ok=pass
+  t0=$(date +%s)
+  if [ "$g" = "g3" ]; then   # interactive: no log capture between human and diff
+    "$HARNESS_HOME/gates/$script" "$td" "$root" || ok=fail
+  else
+    "$HARNESS_HOME/gates/$script" "$td" "$root" 2>&1 \
+      | tee "$td/report/$g.log" || ok=fail
+  fi
+  printf '{"ts":"%s","phase":"gate:%s","result":"%s","duration_s":%d}\n' \
+    "$(date +%Y-%m-%dT%H:%M:%S)" "$g" "$ok" "$(( $(date +%s) - t0 ))" \
+    >> "$td/report/events.jsonl"
+  [ "$ok" = "pass" ] || die "gate $g FAILED (log: .tasks/$name/report/$g.log)"
+  touch "$td/report/$g.pass"
+  info "gate $g PASSED"
+}
+
+case "$cmd" in
+  init)
+    root="$(repo_root "${1:-.}")"
+    mkdir -p "$root/.tasks" "$root/decisions"
+    [ -f "$root/AGENTS.md" ]     || cp "$HARNESS_HOME/templates/AGENTS.md" "$root/AGENTS.md"
+    [ -e "$root/CLAUDE.md" ]     || ln -s AGENTS.md "$root/CLAUDE.md"   # one canonical file, no drift
+    [ -f "$root/.harness.toml" ] || cp "$HARNESS_HOME/templates/harness.toml" "$root/.harness.toml"
+    info "initialized $root (.tasks/, decisions/, AGENTS.md + CLAUDE.md symlink, .harness.toml)"
+    info "commit this scaffolding before starting tasks — untracked files fail G2's scope check"
+    ;;
+  spec)
+    need_task "${1:-}"
+    [ -f "$td/SPEC.md" ] && die "spec already exists: $td/SPEC.md"
+    mkdir -p "$td/report"
+    sed "s/{{TASK}}/$name/g" "$HARNESS_HOME/templates/SPEC.md" > "$td/SPEC.md"
+    info "created $td/SPEC.md"
+    info "next: write the spec, set 'Status: approved', then 'harness plan $name'"
+    ;;
+  plan)
+    need_task "${1:-}"
+    run_gate g0
+    invalidate_from g1
+    "$adapter" planner "$td" "$root"
+    run_gate g1
+    info "next: harness implement $name"
+    ;;
+  implement)
+    need_task "${1:-}"
+    require_pass g0; require_pass g1
+    invalidate_from g2
+    "$adapter" implementer "$td" "$root"
+    run_gate g2
+    info "next: harness review $name"
+    ;;
+  review)
+    need_task "${1:-}"
+    require_pass g2
+    invalidate_from g2.5
+    # Cross-model review: reviewer_model may be "model" or "adapter/model",
+    # so the reviewer can run on a different CLI than the implementer.
+    r_adapter="$adapter"
+    rm_val=$(cfg "$root" reviewer_model "")
+    case "$rm_val" in
+      */*)
+        r_adapter="$HARNESS_HOME/adapters/${rm_val%%/*}.sh"
+        [ -x "$r_adapter" ] || die "no such adapter: ${rm_val%%/*} (reviewer_model=$rm_val)"
+        export HARNESS_REVIEWER_MODEL="${rm_val#*/}"
+        ;;
+      ?*)
+        export HARNESS_REVIEWER_MODEL="$rm_val"
+        ;;
+    esac
+    "$r_adapter" reviewer "$td" "$root"
+    run_gate g2.5
+    info "next: harness approve $name"
+    ;;
+  approve)
+    need_task "${1:-}"
+    require_pass g2.5
+    run_gate g3
+    info "next: harness merge $name"
+    ;;
+  merge)
+    need_task "${1:-}"
+    require_pass g3
+    [ -f "$td/report/g3-approved" ] || die "no human approval record"
+    rec="$root/decisions/$(date +%Y-%m-%d)-$name.md"
+    mkdir -p "$root/decisions"
+    verdict=$(grep -iE '^VERDICT:' "$td/report/review.md" 2>/dev/null | tail -1 || echo "VERDICT: (no review)")
+    {
+      echo "# Decision record — $name"
+      echo
+      echo "- Date: $(date +%Y-%m-%d)"
+      echo "- Review: $verdict"
+      echo "- Approved: $(cat "$td/report/g3-approved")"
+      echo "- Gates: $(cd "$td/report" && ls ./*.pass 2>/dev/null | sed 's|./||;s|.pass||' | tr '\n' ' ')"
+      echo
+      echo "## Spec"
+      echo
+      sed -n '/^## Problem/,$p' "$td/SPEC.md"
+    } > "$rec"
+    git -C "$root" add -A
+    git -C "$root" commit -q -m "task($name): merge via harness — gates G0–G3 passed"
+    info "merged $(git -C "$root" rev-parse --short HEAD); decision record: decisions/$(basename "$rec")"
+    ;;
+  gate)
+    g="${1:-}"; [ -n "$g" ] || die "usage: harness gate <g0|g1|g2|g2.5|g3> <task>"
+    need_task "${2:-}"
+    run_gate "$g"
+    ;;
+  status)
+    need_task "${1:-}"
+    [ -d "$td" ] || die "no such task: $name"
+    echo "task: $name"
+    for g in $GATES; do
+      if [ -f "$td/report/$g.pass" ]; then echo "  $g   ✓ pass"; else echo "  $g   · pending"; fi
+    done
+    ;;
+  calibrate)
+    python3 "$HARNESS_HOME/lib/calibrate.py" "$(repo_root .)"
+    ;;
+  loc)
+    wc -l "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
+          "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh
+    echo "budget: ~1500 lines total (see HARNESS-PLAN.md §9)"
+    ;;
+  help|-h|--help) usage ;;
+  *) echo "harness: unknown command '$cmd'" >&2; usage 1 ;;
+esac
