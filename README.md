@@ -16,6 +16,7 @@ SPEC ──G0──▶ PLAN ──G1──▶ IMPLEMENT ──G2──▶ REVIEW
 
 | Gate | Checks |
 |---|---|
+| pre-G0 | *(optional)* `harness critique`: fresh-context, read-only agent attacks the draft spec — untestable criteria, ambiguity, conflicts with the repo. Advisory; never a gate |
 | G0 | SPEC.md exists, has acceptance criteria, human set `Status: approved` |
 | G1 | Plan references only real files/symbols; fan-out scopes disjoint |
 | G2 | Repo's **own** lint/typecheck/tests pass; diff budget; scope respected. Refuses (exit 2) repos with no toolchain |
@@ -31,7 +32,9 @@ cp templates/PRINCIPLES.md ~/.harness/PRINCIPLES.md   # once, globally
 cd yourrepo                    # must be git, must have its own lint/test config
 harness init                   # .tasks/, decisions/, AGENTS.md, .harness.toml
 harness spec add-retry         # scaffold .tasks/add-retry/SPEC.md
-$EDITOR .tasks/add-retry/SPEC.md   # write it; set "Status: approved"
+$EDITOR .tasks/add-retry/SPEC.md   # write it — the spec stays yours
+harness critique add-retry     # optional: fresh-context agent attacks the draft
+$EDITOR .tasks/add-retry/SPEC.md   # fix what it caught; set "Status: approved"
 
 harness plan add-retry         # G0 → planner agent → PLAN.md → G1
 harness implement add-retry    # implementer agent → G2 (lint/tests/scope/budget)

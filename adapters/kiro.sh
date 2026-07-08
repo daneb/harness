@@ -52,11 +52,15 @@ json.dump(cfg, open(out, "w"), indent=2)
 PY
 
 # Runs kiro non-interactively, saves the raw transcript, emits the usage event,
-# prints the ANSI-stripped response on stdout.
+# prints the ANSI-stripped response on stdout. The role file is inlined into the
+# prompt (as well as living in the agent config) — Kiro has no equivalent of
+# --append-system-prompt, and the config's file:// prompt alone proved too weak
+# to hold the output-format contract.
 run_kiro() {
-  local tsf="$td/report/$role-transcript.kiro.txt" t0 mjson esc
+  local tsf="$td/report/$role-transcript.kiro.txt" t0 mjson esc full_prompt
+  full_prompt="$(printf 'YOUR ROLE AND OUTPUT CONTRACT — follow exactly:\n\n%s\n\n---\n\nTASK:\n%s' "$(cat "$sys")" "$prompt")"
   t0=$(date +%s)
-  (cd "$wd" && "$KIRO_BIN" chat --no-interactive --agent "$agent" "$prompt") \
+  (cd "$wd" && "$KIRO_BIN" chat --no-interactive --agent "$agent" "$full_prompt") \
     > "$tsf" 2> "$td/report/$role-kiro.err" \
     || die "kiro run failed — see $rel/report/$role-kiro.err"
   mjson="null"; [ -n "$model" ] && mjson="\"$model\""
@@ -68,6 +72,15 @@ run_kiro() {
 }
 
 case "$role" in
+  spec-critic)
+    info "spec critic (kiro, fresh context, read-only) → report/spec-review.md"
+    prompt="Critique the draft specification at $rel/SPEC.md before human \
+approval. Survey this repository to check the spec against reality. Print ONLY \
+the critique in your agent prompt's format, ending with an ASSESSMENT line — \
+your response is saved verbatim as $rel/report/spec-review.md."
+    run_kiro > "$td/report/spec-review.md"
+    info "wrote $td/report/spec-review.md"
+    ;;
   planner)
     info "planner (kiro, fresh context, read-only) → PLAN.md"
     prompt="Read $rel/SPEC.md, survey this repository, and produce the PLAN.md \

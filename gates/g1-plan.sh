@@ -12,7 +12,11 @@ plan="$td/PLAN.md"
 [ -f "$plan" ] || die "G1: $plan not found — run 'harness plan <task>'"
 
 tasks=$(plan_tasks "$plan")
-[ -n "$tasks" ] || die "G1: PLAN.md contains no '## Task:' entries"
+[ -n "$tasks" ] || {
+  echo "G1: PLAN.md contains no '## Task:' entries — the planner ignored the output format." >&2
+  echo "G1: inspect $plan and report/planner-transcript.*, then re-run 'harness plan'." >&2
+  exit 1
+}
 
 fail=0
 

@@ -30,6 +30,15 @@ run_role() {
 }
 
 case "$role" in
+  spec-critic)
+    info "spec critic (fresh context, read-only) → report/spec-review.md"
+    prompt="Critique the draft specification at $rel/SPEC.md before human \
+approval. Survey this repository to check the spec against reality. Print ONLY \
+the critique in your role's format, ending with an ASSESSMENT line — your \
+stdout is saved verbatim as $rel/report/spec-review.md."
+    run_role --allowedTools "$readonly_tools" > "$td/report/spec-review.md"
+    info "wrote $td/report/spec-review.md"
+    ;;
   planner)
     info "planner (fresh context, read-only) → PLAN.md"
     prompt="Read $rel/SPEC.md, survey this repository, and produce the PLAN.md \

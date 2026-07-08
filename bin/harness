@@ -11,6 +11,7 @@ harness — gated agent pipeline (gates, not virtue)
 
   harness init [dir]          set up .tasks/, decisions/, AGENTS.md, .harness.toml
   harness spec <task>         scaffold .tasks/<task>/SPEC.md (then: write it, approve it)
+  harness critique <task>     fresh-context agent attacks your draft spec (advisory, pre-G0)
   harness plan <task>         G0, then planner agent writes PLAN.md, then G1
   harness implement <task>    implementer agent edits the tree, then G2
   harness review <task>       fresh-context reviewer writes review.md, then G2.5
@@ -35,6 +36,10 @@ need_task() {
   [ -n "$name" ] || die "usage: harness $cmd <task-name>"
   root="$(repo_root .)"
   td="$root/.tasks/$name"
+}
+
+require_adapter() {
+  [ -x "$adapter" ] || die "no such adapter: ${HARNESS_ADAPTER:-claude} — available: $(cd "$HARNESS_HOME/adapters" && ls ./*.sh | sed 's|./||;s|\.sh||' | tr '\n' ' ')"
 }
 
 require_pass() {
@@ -97,8 +102,19 @@ case "$cmd" in
     info "created $td/SPEC.md"
     info "next: write the spec, set 'Status: approved', then 'harness plan $name'"
     ;;
+  critique)
+    need_task "${1:-}"
+    require_adapter
+    [ -f "$td/SPEC.md" ] || die "no spec to critique — run 'harness spec $name' and write it first"
+    "$adapter" spec-critic "$td" "$root"
+    echo
+    cat "$td/report/spec-review.md"
+    echo
+    info "advisory only — G0 still requires your own 'Status: approved' in SPEC.md"
+    ;;
   plan)
     need_task "${1:-}"
+    require_adapter
     run_gate g0
     invalidate_from g1
     "$adapter" planner "$td" "$root"
@@ -107,6 +123,7 @@ case "$cmd" in
     ;;
   implement)
     need_task "${1:-}"
+    require_adapter
     require_pass g0; require_pass g1
     invalidate_from g2
     "$adapter" implementer "$td" "$root"
@@ -115,6 +132,7 @@ case "$cmd" in
     ;;
   review)
     need_task "${1:-}"
+    require_adapter
     require_pass g2
     invalidate_from g2.5
     # Cross-model review: reviewer_model may be "model" or "adapter/model",
