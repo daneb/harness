@@ -17,11 +17,36 @@ git -C "$root" rev-parse HEAD >/dev/null 2>&1 || die "G2: repo has no commits to
 discover_checks() {
   local d="$1" s t
   if [ -f "$d/package.json" ]; then
-    for s in lint typecheck test; do
-      if python3 -c "import json,sys; sys.exit(0 if '$s' in json.load(open('$d/package.json')).get('scripts',{}) else 1)" 2>/dev/null; then
-        echo "npm run $s --silent"
-      fi
-    done
+    # Root scripts, declared npm/yarn workspaces, and one-level-deep sub-packages
+    # (monorepos often keep the real toolchain below the root).
+    python3 - "$d" <<'PY'
+import glob, json, os, sys
+root = sys.argv[1]
+def scripts(p):
+    try:
+        return json.load(open(os.path.join(p, "package.json"))).get("scripts", {})
+    except Exception:
+        return {}
+wanted = ("lint", "typecheck", "test")
+for s in wanted:
+    if s in scripts(root):
+        print("npm run %s --silent" % s)
+ws = json.load(open(os.path.join(root, "package.json"))).get("workspaces", [])
+if isinstance(ws, dict):
+    ws = ws.get("packages", [])
+members = set()
+for pat in list(ws) + ["*"]:
+    for m in glob.glob(os.path.join(root, pat)):
+        rel = os.path.relpath(m, root)
+        if rel.startswith("node_modules") or rel == ".":
+            continue
+        if os.path.isfile(os.path.join(m, "package.json")):
+            members.add(rel)
+for m in sorted(members):
+    for s in wanted:
+        if s in scripts(os.path.join(root, m)):
+            print("npm --prefix %s run %s --silent" % (m, s))
+PY
   fi
   if [ -f "$d/Makefile" ]; then
     for t in lint typecheck test; do
