@@ -84,7 +84,7 @@ fi
 
 # --- Scope check: changed files must be within the plan's declared scope. ---
 scope=$(plan_list "$plan" scope | awk '{print $1}')
-changed=$(git -C "$root" status --porcelain | awk '{print $NF}' \
+changed=$(git -C "$root" status --porcelain -uall | awk '{print $NF}' \
           | grep -vE '^(\.tasks/|decisions/|\.harness\.toml$)' || true)
 fail=0
 for f in $changed; do
@@ -93,18 +93,29 @@ for f in $changed; do
 done
 [ "$fail" -eq 0 ] || die "G2: scope violation"
 
-# --- Diff budget: added+removed lines (tracked) + lines of new untracked files. ---
+# --- Diff budget: added+removed product lines (tracked) + new untracked files.
+# --- Test files are exempt — the cap must never reward skipping tests.
 budget=$(cfg "$root" diff_budget_lines 400)
-lines=$(git -C "$root" diff HEAD --numstat | awk '{n+=$1+$2} END{print n+0}')
+lines=0; tlines=0
+while read -r add del f; do
+  [ -n "$f" ] || continue
+  case "$add" in ''|*[!0-9]*) continue ;; esac   # binary files report "-"
+  if is_test_file "$f"; then tlines=$((tlines + add + del)); else lines=$((lines + add + del)); fi
+done <<EOF
+$(git -C "$root" diff HEAD --numstat)
+EOF
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   case "$f" in .tasks/*|decisions/*) continue;; esac
-  [ -f "$root/$f" ] && lines=$((lines + $(wc -l < "$root/$f")))
+  [ -f "$root/$f" ] || continue
+  if is_test_file "$f"; then tlines=$((tlines + $(wc -l < "$root/$f")))
+  else lines=$((lines + $(wc -l < "$root/$f"))); fi
 done <<EOF
 $(git -C "$root" ls-files --others --exclude-standard)
 EOF
-[ "$lines" -le "$budget" ] || die "G2: diff is $lines lines, budget is $budget (diff_budget_lines)"
-echo "G2: diff $lines/$budget lines, all changes in scope"
+[ "$lines" -le "$budget" ] \
+  || die "G2: diff is $lines product lines (budget $budget; $tlines test lines exempt)"
+echo "G2: diff $lines/$budget product lines ($tlines test lines exempt), all changes in scope"
 
 # --- Run the repo's own checks. ---
 while IFS= read -r c; do

@@ -22,6 +22,18 @@ cfg() {
   echo "${v:-$3}"
 }
 
+# is_test_file <repo-relative path> — heuristic shared by the G2 diff budget
+# (test lines are exempt: a size cap must never discourage tests) and any
+# future test-efficacy checks.
+is_test_file() {
+  case "$1" in
+    */__tests__/*|__tests__/*|*/tests/*|tests/*|*/test/*|test/*|*/spec/*|spec/*) return 0 ;;
+    *.test.*|*.spec.*|*_test.*|*_spec.*) return 0 ;;
+    test_*|*/test_*|conftest.py|*/conftest.py) return 0 ;;
+  esac
+  return 1
+}
+
 # plan_tasks <plan_file> — list task slugs, one per line
 plan_tasks() { sed -nE 's/^## Task:[[:space:]]*(.*)/\1/p' "$1"; }
 

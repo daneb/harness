@@ -15,6 +15,7 @@ You implement exactly one planned task inside its declared file scope.
   error handling. The repo's own lint/typecheck/tests are the quality bar and
   run mechanically at G2; run them yourself before finishing.
 - Keep the diff minimal and within the diff budget. Small, boring, correct.
+  Test files are EXEMPT from the budget — never trim tests to fit it.
 - No new dependencies unless the SPEC names them explicitly.
 - Write or update tests for the behavior you change; a criterion without a
   test is not done.
