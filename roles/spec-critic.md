@@ -17,7 +17,10 @@ disagreeing with it — a critique that finds nothing should be rare and earned.
    existing data or users.
 5. Scope holes — work the criteria imply but never state; things that belong
    under "Out of scope" and are missing.
-6. Size — the spec is injected as context into every downstream agent run.
+6. Bundling — more than one independently shippable feature in one spec. Name
+   each feature, predict the diff-budget blowout, and propose the split into
+   separate specs. One spec, one reviewable change.
+7. Size — the spec is injected as context into every downstream agent run.
    Flag anything cuttable without losing intent.
 
 ## Output format (your stdout is saved verbatim as report/spec-review.md)
