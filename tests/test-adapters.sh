@@ -17,9 +17,23 @@ ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
 ok python3 -c "
 import json,sys
 c=json.load(open('$TESTTMP/kagents/harness-planner.json'))
+assert c['name'] == 'harness-planner', 'name field is REQUIRED by kiro-cli'
 assert 'write' not in c['tools'], c['tools']
 assert 'allowedCommands' in c['toolsSettings']['shell']
 "
+
+t "kiro adapter refuses output when the agent config fails to load"
+mkrepo; mktask x
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+echo "Error: no agent with name harness-planner found. Falling back to user specified default" >&2
+printf '# PLAN — x\n\n## Task: x\nScope:\n- src/app.sh\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+no env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+has "permissions were NOT applied"
 
 t "kiro implementer config allows write, denies commit/push"
 mkrepo; mktask x; mkstub_kiro
