@@ -23,10 +23,14 @@ agent_dir="${KIRO_AGENT_DIR:-$HOME/.kiro/agents}"   # global: keeps work repos c
 mkdir -p "$agent_dir"
 model="${HARNESS_REVIEWER_MODEL:-}"                  # set by bin/harness for cross-model review
 
-# (Re)generate the agent config each run so role-file edits always take effect.
+# (Re)generate ALL role configs each run — kiro validates every file in the
+# agents directory at startup, so one stale/invalid config pollutes every run.
 # If your Kiro version rejects the tool names, swap read/write/shell for
 # fs_read/fs_write/execute_bash — both appear in Kiro's docs.
-python3 - "$agent_dir/$agent.json" "$sys" "$role" "$model" <<'PY'
+for r in planner implementer reviewer spec-critic spec-splitter; do
+  m=""
+  [ "$r" = "reviewer" ] && m="$model"
+  python3 - "$agent_dir/harness-$r.json" "$HARNESS_HOME/roles/$r.md" "$r" "$m" <<'PY'
 import json, sys
 out, prompt_file, role, model = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 cfg = {
@@ -51,6 +55,7 @@ if role == "reviewer" and model:
     cfg["model"] = model
 json.dump(cfg, open(out, "w"), indent=2)
 PY
+done
 
 # Runs kiro non-interactively, saves the raw transcript, emits the usage event,
 # prints the ANSI-stripped response on stdout. The role file is inlined into the
@@ -64,9 +69,9 @@ run_kiro() {
   (cd "$wd" && "$KIRO_BIN" chat --no-interactive --agent "$agent" "$full_prompt") \
     > "$tsf" 2> "$td/report/$role-kiro.err" \
     || die "kiro run failed — see $rel/report/$role-kiro.err"
-  # A config kiro can't load means a silent fallback to default permissions —
-  # the role's read-only/no-commit guarantees were NOT applied. Refuse the output.
-  if grep -qiE 'is invalid|no agent with name|falling back' "$td/report/$role-kiro.err"; then
+  # THIS run's config failing to load means a silent fallback to default
+  # permissions — refuse the output. Other agents' config errors are noise.
+  if grep -qiE "$agent\.json is invalid|no agent with name $agent|falling back" "$td/report/$role-kiro.err"; then
     die "kiro did not load the $agent config — role permissions were NOT applied. See $rel/report/$role-kiro.err"
   fi
   mjson="null"; [ -n "$model" ] && mjson="\"$model\""

@@ -22,6 +22,29 @@ assert 'write' not in c['tools'], c['tools']
 assert 'allowedCommands' in c['toolsSettings']['shell']
 "
 
+t "one run regenerates every role config, all with the required name field"
+mkrepo; mktask x; mkstub_kiro
+ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+ok python3 -c "
+import json
+for r in ['planner','implementer','reviewer','spec-critic','spec-splitter']:
+    c = json.load(open('$TESTTMP/kagents/harness-%s.json' % r))
+    assert c['name'] == 'harness-' + r, r
+"
+
+t "another agent's invalid config does not kill this run"
+mkrepo; mktask x
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+echo "Error: Json supplied at /home/u/.kiro/agents/harness-spec-critic.json is invalid: missing field name" >&2
+printf '# PLAN — x\n\n## Task: x\nScope:\n- src/app.sh\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+
 t "kiro adapter refuses output when the agent config fails to load"
 mkrepo; mktask x
 mkdir -p "$TESTTMP/bin"
