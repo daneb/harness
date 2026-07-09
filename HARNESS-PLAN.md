@@ -210,8 +210,14 @@ Start with shell/just scripts. Promote hot paths to a small Rust or TypeScript b
 
 ## 10. Open decisions
 
-- [ ] Name
-- [ ] v1 language for the binary when promoted (Rust vs TypeScript)
+- [x] Name (2026-07-08): `harness`
+- [x] Language (decided 2026-07-09): **stays shell.** Simplicity, hackability, and
+  zero-install are features; the black-box test suite is the conformance spec for
+  any future port. Revisit ONLY when a trigger fires: (a) product code exceeds
+  ~1,200 lines with build-order steps unbuilt, (b) step-4 fan-out needs process
+  management shell+zmx can't express, or (c) the structured-data core (plan
+  parsing, events, config) dominates — then port that core as one small binary
+  and keep gates/adapters as scripts calling it.
 - [ ] Diff-size budget default
 - [ ] Reviewer verdict schema (JSON vs structured markdown)
 - [ ] Vault writeback: automatic or prompted

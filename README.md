@@ -91,6 +91,17 @@ templates/         SPEC.md, AGENTS.md, PRINCIPLES.md, .harness.toml
 Per-repo config is [4 lines of TOML](templates/harness.toml). No other
 configuration exists. `harness loc` checks the ~1,500-line budget.
 
+## Development
+
+The harness holds itself to its own bar: `make lint` (shellcheck) and
+`make test` (125-assertion black-box regression suite in `tests/`, stub
+adapters, no network) — the exact commands G2 discovers in this repo. CI
+runs both on Ubuntu and macOS (bash 3.2, the compatibility floor). Run
+`harness doctor` to preflight a machine. The suite treats the CLI as a
+black box on purpose: it is the conformance spec for any future port
+(HARNESS-PLAN.md §10 — the language stays shell until a written trigger
+fires).
+
 ## Build order status
 
 | Step | Deliverable | Status |

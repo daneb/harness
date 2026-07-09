@@ -1,0 +1,97 @@
+# shellcheck shell=bash
+# Adapter contract: config generation, role inlining, ANSI stripping, events.
+
+t "kiro planner: role inlined, ANSI stripped, event emitted"
+mkrepo; mktask x; mkstub_kiro
+ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+filehas .tasks/x/PLAN.md "## Task: x"
+if grep -q "$(printf '\033')" .tasks/x/PLAN.md; then fail "ANSI escapes survived in PLAN.md"; else pass; fi
+filehas .tasks/x/report/events.jsonl '"adapter":"kiro"'
+hasfile .tasks/x/report/planner-transcript.kiro.txt
+
+t "kiro planner/reviewer agent configs are read-only"
+mkrepo; mktask x; mkstub_kiro
+ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+ok python3 -c "
+import json,sys
+c=json.load(open('$TESTTMP/kagents/harness-planner.json'))
+assert 'write' not in c['tools'], c['tools']
+assert 'allowedCommands' in c['toolsSettings']['shell']
+"
+
+t "kiro implementer config allows write, denies commit/push"
+mkrepo; mktask x; mkstub_kiro
+ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" implementer "$PWD/.tasks/x" "$PWD"
+ok python3 -c "
+import json
+c=json.load(open('$TESTTMP/kagents/harness-implementer.json'))
+assert 'write' in c['tools']
+assert any('git commit' in d for d in c['toolsSettings']['shell']['deniedCommands'])
+"
+
+t "kiro reviewer honors cross-model override"
+mkrepo; mktask x; mkstub_kiro
+ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  HARNESS_REVIEWER_MODEL=some-model "$A/kiro.sh" reviewer "$PWD/.tasks/x" "$PWD"
+filehas "$TESTTMP/kagents/harness-reviewer.json" '"model": "some-model"'
+filehas .tasks/x/report/review.md "VERDICT: pass"
+
+t "kiro adapter dies clearly when the binary is missing"
+mkrepo; mktask x
+no env PATH="/usr/bin:/bin" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+has "not found"
+
+t "claude planner: stream parsed, artifact written, usage event emitted"
+mkrepo; mktask x; mkstub_claude
+ok env PATH="$TESTTMP/bin:$PATH" "$A/claude.sh" planner "$PWD/.tasks/x" "$PWD"
+filehas .tasks/x/PLAN.md "## Task: x"
+filehas .tasks/x/report/events.jsonl '"model": "claude-stub"'
+filehas .tasks/x/report/events.jsonl '"cost_usd": 0.01'
+hasfile .tasks/x/report/planner-transcript.jsonl
+
+t "stream_result.py fails loud on an error result"
+mkrepo
+cat > ts.jsonl <<'EOF'
+{"type":"system","subtype":"init","model":"m"}
+{"type":"result","subtype":"success","is_error":true,"result":"Credit balance is too low","usage":{}}
+EOF
+no python3 "$HROOT/lib/stream_result.py" ts.jsonl ev.jsonl smoke
+filehas ev.jsonl '"is_error": true'
+
+t "stream_result.py fails when the transcript has no result"
+mkrepo
+printf '{"type":"system","subtype":"init","model":"m"}\n' > ts.jsonl
+no python3 "$HROOT/lib/stream_result.py" ts.jsonl ev.jsonl smoke; has "no result event"
+
+t "spec-critic runs read-only and saves the critique"
+mkrepo; mktask x; mkstub_kiro
+ok env PATH="$TESTTMP/bin:$PATH" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" spec-critic "$PWD/.tasks/x" "$PWD"
+filehas .tasks/x/report/spec-review.md "ASSESSMENT:"
+ok python3 -c "
+import json
+c=json.load(open('$TESTTMP/kagents/harness-spec-critic.json'))
+assert 'write' not in c['tools']
+"
+
+t "plan_list parses scopes, symbols, and (new) markers"
+mkrepo; mktask x
+edit .tasks/x/PLAN.md "- src/app.sh" "- src/app.sh
+- src/other.sh (new)"
+run plan_list .tasks/x/PLAN.md scope
+has "src/app.sh"; has "src/other.sh (new)"
+run plan_list .tasks/x/PLAN.md sym
+has "greet"
+
+t "is_test_file heuristic"
+ok is_test_file "src/__tests__/x.ts"
+ok is_test_file "tests/foo.sh"
+ok is_test_file "src/thing.test.ts"
+ok is_test_file "pkg/util_test.go"
+ok is_test_file "test_main.py"
+no is_test_file "src/app.sh"
+no is_test_file "contest.py"

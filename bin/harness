@@ -20,6 +20,8 @@ harness — gated agent pipeline (gates, not virtue)
   harness gate <g> <task>     run one gate manually (g0|g1|g2|g2.5|g3)
   harness status <task>       show gate progress
   harness calibrate           reviewer verdicts vs your G3 decisions (TPR/TNR)
+  harness doctor              preflight: git, toolchain, adapter, dependencies
+  harness version             version + commit
   harness loc                 line count vs the ~1500-line budget
 
 Adapter: $HARNESS_ADAPTER (default "claude") selects adapters/<name>.sh
@@ -39,7 +41,7 @@ need_task() {
 }
 
 require_adapter() {
-  [ -x "$adapter" ] || die "no such adapter: ${HARNESS_ADAPTER:-claude} — available: $(cd "$HARNESS_HOME/adapters" && ls ./*.sh | sed 's|./||;s|\.sh||' | tr '\n' ' ')"
+  [ -x "$adapter" ] || die "no such adapter: ${HARNESS_ADAPTER:-claude} — available: $(cd "$HARNESS_HOME/adapters" && for f in *.sh; do printf '%s ' "${f%.sh}"; done)"
 }
 
 require_pass() {
@@ -108,7 +110,7 @@ case "$cmd" in
     [ -f "$td/SPEC.md" ] || die "no spec to critique — run 'harness spec $name' and write it first"
     "$adapter" spec-critic "$td" "$root"
     echo
-    cat "$td/report/spec-review.md"
+    render "$td/report/spec-review.md"
     echo
     info "advisory only — G0 still requires your own 'Status: approved' in SPEC.md"
     ;;
@@ -151,6 +153,8 @@ case "$cmd" in
     esac
     "$r_adapter" reviewer "$td" "$root"
     run_gate g2.5
+    echo
+    render "$td/report/review.md"
     info "next: harness approve $name"
     ;;
   approve)
@@ -172,7 +176,7 @@ case "$cmd" in
       echo "- Date: $(date +%Y-%m-%d)"
       echo "- Review: $verdict"
       echo "- Approved: $(cat "$td/report/g3-approved")"
-      echo "- Gates: $(cd "$td/report" && ls ./*.pass 2>/dev/null | sed 's|./||;s|.pass||' | tr '\n' ' ')"
+      echo "- Gates: $(cd "$td/report" && for f in *.pass; do [ -e "$f" ] && printf '%s ' "${f%.pass}"; done)"
       echo
       echo "## Spec"
       echo
@@ -197,6 +201,50 @@ case "$cmd" in
     ;;
   calibrate)
     python3 "$HARNESS_HOME/lib/calibrate.py" "$(repo_root .)"
+    ;;
+  doctor)
+    fails=0
+    ck() {
+      case "$1" in
+        ok)   printf '  \342\234\223 %s%s\n' "$2" "${3:+ — $3}" ;;
+        warn) printf '  ! %s%s\n' "$2" "${3:+ — $3}" ;;
+        fail) printf '  \342\234\227 %s%s\n' "$2" "${3:+ — $3}"; fails=1 ;;
+      esac
+    }
+    echo "harness doctor"
+    if command -v python3 >/dev/null 2>&1; then ck ok "python3" "$(python3 -V 2>&1)"
+    else ck fail "python3" "required by gates and adapters"; fi
+    if command -v rg >/dev/null 2>&1; then ck ok "ripgrep"
+    else ck warn "ripgrep" "G1 symbol checks fall back to slower grep"; fi
+    if command -v glow >/dev/null 2>&1 || command -v bat >/dev/null 2>&1; then ck ok "markdown renderer"
+    else ck warn "markdown renderer" "critiques/reviews print plain (brew install glow)"; fi
+    if r=$(git rev-parse --show-toplevel 2>/dev/null); then
+      ck ok "git repo" "$r"
+      checks=$(discover_checks "$r" | awk '!seen[$0]++')
+      if [ -n "$checks" ]; then ck ok "quality bar" "$(echo "$checks" | tr '\n' ';' | sed 's/;$//;s/;/; /g')"
+      else ck fail "quality bar" "no lint/typecheck/test config — G2 will refuse (exit 2)"; fi
+      if [ -f "$r/.harness.toml" ]; then ck ok ".harness.toml"
+      else ck warn ".harness.toml" "using defaults (harness init writes one)"; fi
+    else
+      ck fail "git repo" "not inside one — the harness requires git"
+    fi
+    a="${HARNESS_ADAPTER:-claude}"
+    if [ -x "$HARNESS_HOME/adapters/$a.sh" ]; then ck ok "adapter" "$a"
+    else ck fail "adapter" "$a — no adapters/$a.sh"; fi
+    case "$a" in
+      claude)
+        if command -v claude >/dev/null 2>&1; then ck ok "claude CLI"
+        else ck fail "claude CLI" "not on PATH"; fi ;;
+      kiro)
+        if command -v kiro-cli >/dev/null 2>&1 || command -v kiro >/dev/null 2>&1 || [ -x "${KIRO_BIN:-/nonexistent}" ]; then ck ok "kiro CLI"
+        else ck fail "kiro CLI" "not on PATH (set KIRO_BIN to override)"; fi ;;
+    esac
+    exit "$fails"
+    ;;
+  version)
+    v=$(cat "$HARNESS_HOME/VERSION" 2>/dev/null || echo dev)
+    sha=$(git -C "$HARNESS_HOME" rev-parse --short HEAD 2>/dev/null || echo unreleased)
+    echo "harness $v ($sha)"
     ;;
   loc)
     wc -l "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \

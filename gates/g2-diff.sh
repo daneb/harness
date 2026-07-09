@@ -13,68 +13,7 @@ plan="$td/PLAN.md"
 [ -f "$plan" ] || die "G2: $plan not found"
 git -C "$root" rev-parse HEAD >/dev/null 2>&1 || die "G2: repo has no commits to diff against"
 
-# --- Discover the repo's own quality bar. Never supply a default toolchain. ---
-discover_checks() {
-  local d="$1" s t
-  if [ -f "$d/package.json" ]; then
-    # Root scripts, declared npm/yarn workspaces, and one-level-deep sub-packages
-    # (monorepos often keep the real toolchain below the root).
-    python3 - "$d" <<'PY'
-import glob, json, os, sys
-root = sys.argv[1]
-def scripts(p):
-    try:
-        return json.load(open(os.path.join(p, "package.json"))).get("scripts", {})
-    except Exception:
-        return {}
-wanted = ("lint", "typecheck", "test")
-for s in wanted:
-    if s in scripts(root):
-        print("npm run %s --silent" % s)
-ws = json.load(open(os.path.join(root, "package.json"))).get("workspaces", [])
-if isinstance(ws, dict):
-    ws = ws.get("packages", [])
-members = set()
-for pat in list(ws) + ["*"]:
-    for m in glob.glob(os.path.join(root, pat)):
-        rel = os.path.relpath(m, root)
-        if rel.startswith("node_modules") or rel == ".":
-            continue
-        if os.path.isfile(os.path.join(m, "package.json")):
-            members.add(rel)
-for m in sorted(members):
-    for s in wanted:
-        if s in scripts(os.path.join(root, m)):
-            print("npm --prefix %s run %s --silent" % (m, s))
-PY
-  fi
-  if [ -f "$d/Makefile" ]; then
-    for t in lint typecheck test; do
-      if grep -qE "^$t:" "$d/Makefile"; then echo "make $t"; fi
-    done
-  fi
-  if [ -f "$d/justfile" ] || [ -f "$d/Justfile" ]; then
-    for t in lint typecheck test; do
-      if just --justfile "$d"/[jJ]ustfile --show "$t" >/dev/null 2>&1; then echo "just $t"; fi
-    done
-  fi
-  if [ -f "$d/Cargo.toml" ]; then
-    if cargo clippy --version >/dev/null 2>&1; then echo "cargo clippy --quiet -- -D warnings"; fi
-    echo "cargo test --quiet"
-  fi
-  if [ -f "$d/go.mod" ]; then
-    echo "go vet ./..."
-    echo "go test ./..."
-  fi
-  if [ -f "$d/pyproject.toml" ]; then
-    if grep -q '\[tool\.ruff' "$d/pyproject.toml"; then echo "ruff check ."; fi
-    if grep -q '\[tool\.mypy' "$d/pyproject.toml"; then echo "mypy ."; fi
-    if grep -q '\[tool\.pytest' "$d/pyproject.toml"; then echo "pytest -q"; fi
-  fi
-  if [ -f "$d/ruff.toml" ]; then echo "ruff check ."; fi
-  if [ -f "$d/pytest.ini" ]; then echo "pytest -q"; fi
-}
-
+# --- The repo's own quality bar (lib/common.sh). No default toolchain, ever. ---
 checks=$(discover_checks "$root" | awk '!seen[$0]++')
 if [ -z "$checks" ]; then
   echo "G2: REFUSED — this repo declares no lint/typecheck/test configuration." >&2

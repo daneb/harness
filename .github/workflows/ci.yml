@@ -1,0 +1,21 @@
+name: ci
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]   # macOS = bash 3.2, the compatibility floor
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: ensure shellcheck
+        run: |
+          command -v shellcheck >/dev/null 2>&1 && exit 0
+          if [ "$RUNNER_OS" = "macOS" ]; then brew install shellcheck; else sudo apt-get update -q && sudo apt-get install -y shellcheck; fi
+      - run: make lint
+      - run: make test

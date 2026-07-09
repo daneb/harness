@@ -22,6 +22,76 @@ cfg() {
   echo "${v:-$3}"
 }
 
+# render <file.md> — show markdown readably: glow → bat → plain cat.
+render() {
+  if command -v glow >/dev/null 2>&1; then glow -w "${COLUMNS:-100}" "$1"
+  elif command -v bat >/dev/null 2>&1; then bat --style=plain --language=md --paging=never "$1"
+  else cat "$1"; fi
+}
+
+# discover_checks <repo_root> — the repo's own quality bar, one command per line.
+# Never supplies a default toolchain; empty output means G2 must refuse.
+discover_checks() {
+  local d="$1" t
+  if [ -f "$d/package.json" ]; then
+    # Root scripts, declared npm/yarn workspaces, and one-level-deep sub-packages
+    # (monorepos often keep the real toolchain below the root).
+    python3 - "$d" <<'PY'
+import glob, json, os, sys
+root = sys.argv[1]
+def scripts(p):
+    try:
+        return json.load(open(os.path.join(p, "package.json"))).get("scripts", {})
+    except Exception:
+        return {}
+wanted = ("lint", "typecheck", "test")
+for s in wanted:
+    if s in scripts(root):
+        print("npm run %s --silent" % s)
+ws = json.load(open(os.path.join(root, "package.json"))).get("workspaces", [])
+if isinstance(ws, dict):
+    ws = ws.get("packages", [])
+members = set()
+for pat in list(ws) + ["*"]:
+    for m in glob.glob(os.path.join(root, pat)):
+        rel = os.path.relpath(m, root)
+        if rel.startswith("node_modules") or rel == ".":
+            continue
+        if os.path.isfile(os.path.join(m, "package.json")):
+            members.add(rel)
+for m in sorted(members):
+    for s in wanted:
+        if s in scripts(os.path.join(root, m)):
+            print("npm --prefix %s run %s --silent" % (m, s))
+PY
+  fi
+  if [ -f "$d/Makefile" ]; then
+    for t in lint typecheck test; do
+      if grep -qE "^$t:" "$d/Makefile"; then echo "make $t"; fi
+    done
+  fi
+  if [ -f "$d/justfile" ] || [ -f "$d/Justfile" ]; then
+    for t in lint typecheck test; do
+      if just --justfile "$d"/[jJ]ustfile --show "$t" >/dev/null 2>&1; then echo "just $t"; fi
+    done
+  fi
+  if [ -f "$d/Cargo.toml" ]; then
+    if cargo clippy --version >/dev/null 2>&1; then echo "cargo clippy --quiet -- -D warnings"; fi
+    echo "cargo test --quiet"
+  fi
+  if [ -f "$d/go.mod" ]; then
+    echo "go vet ./..."
+    echo "go test ./..."
+  fi
+  if [ -f "$d/pyproject.toml" ]; then
+    if grep -q '\[tool\.ruff' "$d/pyproject.toml"; then echo "ruff check ."; fi
+    if grep -q '\[tool\.mypy' "$d/pyproject.toml"; then echo "mypy ."; fi
+    if grep -q '\[tool\.pytest' "$d/pyproject.toml"; then echo "pytest -q"; fi
+  fi
+  if [ -f "$d/ruff.toml" ]; then echo "ruff check ."; fi
+  if [ -f "$d/pytest.ini" ]; then echo "pytest -q"; fi
+}
+
 # is_test_file <repo-relative path> — heuristic shared by the G2 diff budget
 # (test lines are exempt: a size cap must never discourage tests) and any
 # future test-efficacy checks.

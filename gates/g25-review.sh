@@ -12,7 +12,7 @@ rv="$td/report/review.md"
 [ -f "$rv" ] || die "G2.5: $rv not found — run 'harness review <task>'"
 
 verdict=$(grep -iE '^VERDICT:' "$rv" | tail -1 | cut -d: -f2 \
-          | awk '{print tolower($1)}')
+          | awk '{print tolower($1)}' || true)
 [ -n "$verdict" ] || die "G2.5: review.md has no 'VERDICT:' line"
 
 # Calibration label, paired with the G3 human decision by `harness calibrate`.
