@@ -37,6 +37,11 @@ case "$ans" in
     echo "$(date '+%Y-%m-%d %H:%M:%S') by ${USER:-unknown}" > "$td/report/g3-approved"
     echo "G3: approved by human" ;;
   *)
+    printf "Why? (one line, fed to the next implementer run; empty to skip) "
+    read -r why
+    if [ -n "$why" ]; then
+      printf '%s — %s\n' "$(date '+%Y-%m-%d %H:%M')" "$why" >> "$td/report/g3-feedback.md"
+    fi
     emit_decision reject
     die "G3: not approved" ;;
 esac

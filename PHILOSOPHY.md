@@ -159,7 +159,14 @@ with the review as input). If the reviewer is wrong, note it — your G3
 decision is recorded, and `harness calibrate` turns your disagreements into
 a measured verdict on the reviewer itself.
 
-**G3** — there is no procedure. Read the diff. It's your name on the merge.
+**G3** — there is no procedure for the reading. Read the diff. It's your name
+on the merge. When you *find* an issue: reject, give the one-line reason when
+prompted (it's saved to `report/g3-feedback.md` and fed to the next
+implementer run), then route like a G2 failure — implementation defect →
+`harness implement` again; wrong spec → edit it, re-approve, re-plan; a nit
+you'd fix faster than explain → fix it yourself and let it re-run the gates.
+Every rejection is also a calibration label: the reviewer passed something
+you caught, and `harness calibrate` remembers.
 
 ## What the harness is not
 

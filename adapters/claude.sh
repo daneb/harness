@@ -59,6 +59,10 @@ role defines — your stdout is saved verbatim as $rel/PLAN.md."
     prompt="Implement the task defined in $rel/SPEC.md according to $rel/PLAN.md. \
 Touch only files within your task's declared Scope. Run this repo's own \
 lint/tests before finishing. Leave all changes uncommitted."
+    [ -f "$td/report/g3-feedback.md" ] && prompt="$prompt A previous attempt was \
+rejected by the human reviewer; read $rel/report/g3-feedback.md and address it."
+    [ -f "$td/report/review.md" ] && prompt="$prompt Prior reviewer findings are \
+in $rel/report/review.md."
     run_role --permission-mode acceptEdits | tee "$td/report/implement.log"
     ;;
   reviewer)

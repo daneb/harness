@@ -78,6 +78,35 @@ c=json.load(open('$TESTTMP/kagents/harness-spec-critic.json'))
 assert 'write' not in c['tools']
 "
 
+t "implementer prompt carries G3 feedback and prior review when present"
+mkrepo; mktask x
+echo "2026-07-09 — retry swallows timeouts" > .tasks/x/report/g3-feedback.md
+printf '# R\n\nVERDICT: concerns\n' > .tasks/x/report/review.md
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+printf '%s' "$5" > "$KCAP"
+echo implemented
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+ok env PATH="$TESTTMP/bin:$PATH" KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" implementer "$PWD/.tasks/x" "$PWD"
+filehas "$TESTTMP/prompt.txt" "g3-feedback.md"
+filehas "$TESTTMP/prompt.txt" "review.md"
+
+t "implementer prompt omits feedback pointers when none exist"
+mkrepo; mktask x
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+printf '%s' "$5" > "$KCAP"
+echo implemented
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+ok env PATH="$TESTTMP/bin:$PATH" KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" implementer "$PWD/.tasks/x" "$PWD"
+if grep -q "g3-feedback" "$TESTTMP/prompt.txt"; then fail "feedback pointer present without feedback"; else pass; fi
+
 t "plan_list parses scopes, symbols, and (new) markers"
 mkrepo; mktask x
 edit .tasks/x/PLAN.md "- src/app.sh" "- src/app.sh
