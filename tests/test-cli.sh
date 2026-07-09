@@ -91,6 +91,36 @@ PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents"
 if [ "$RC" -ne 0 ]; then pass; else fail "split overwrote an existing task"; fi
 has "already exists"
 
+t "re-critique preserves the prior critique and points the agent at it"
+mkrepo; mktask y
+echo "old critique" > .tasks/y/report/spec-review.md
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+printf '%s' "$5" > "$KCAP"
+printf '# Spec critique\n\nASSESSMENT: ready\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness critique y
+if [ "$RC" -eq 0 ]; then pass; else fail "re-critique failed: $OUT"; fi
+filehas .tasks/y/report/spec-review.prev.md "old critique"
+filehas "$TESTTMP/prompt.txt" "spec-review.prev.md"
+filehas .tasks/y/report/spec-review.md "ASSESSMENT: ready"
+
+t "first critique does not claim a prior exists"
+mkrepo; mktask y
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+printf '%s' "$5" > "$KCAP"
+printf '# Spec critique\n\nASSESSMENT: ready\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness critique y
+if grep -q "re-critique" "$TESTTMP/prompt.txt"; then fail "re-critique claim on first run"; else pass; fi
+
 t "stats aggregates cost, agent time, and gate failures"
 mkrepo
 mkdir -p .tasks/s1/report

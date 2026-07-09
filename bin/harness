@@ -110,6 +110,9 @@ case "$cmd" in
     need_task "${1:-}"
     require_adapter
     [ -f "$td/SPEC.md" ] || die "no spec to critique — run 'harness spec $name' and write it first"
+    # Preserve the prior critique so a re-critique can respect the human's edits
+    # (the output redirect would otherwise truncate it before the agent reads it).
+    [ -f "$td/report/spec-review.md" ] && mv "$td/report/spec-review.md" "$td/report/spec-review.prev.md"
     "$adapter" spec-critic "$td" "$root"
     echo
     render "$td/report/spec-review.md"

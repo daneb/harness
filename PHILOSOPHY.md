@@ -124,6 +124,14 @@ session instead; it's better at that job.
 the point. Write testable criteria; set `Status: approved` only after you'd
 bet a review sitting on them. Run `harness critique` first.
 
+**The critique never says ready** — it can't happen anymore by role rule
+(`needs-work` requires a non-empty Must-fix section; style items never
+block), and re-critiques treat your edits as rulings. But the deeper rule is
+yours: the critic works for you. One round, sometimes two; read the Must-fix
+section seriously, skim the rest, and approve when Must-fix is empty or
+consciously overruled. A critic you obey indefinitely is authoring your spec
+by attrition — which is why it doesn't get to.
+
 **G1 fails** — the plan references files or symbols that don't exist, or
 declares overlapping scopes. The planner hallucinated or free-styled the
 format. Re-run `harness plan` (fresh context, new roll) or fix PLAN.md by

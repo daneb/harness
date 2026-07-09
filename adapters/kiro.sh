@@ -85,6 +85,9 @@ the marker-delimited spec blocks; your response is saved verbatim."
 approval. Survey this repository to check the spec against reality. Print ONLY \
 the critique in your agent prompt's format, ending with an ASSESSMENT line — \
 your response is saved verbatim as $rel/report/spec-review.md."
+    [ -f "$td/report/spec-review.prev.md" ] && prompt="$prompt This is a \
+re-critique: your prior critique is at $rel/report/spec-review.prev.md and the \
+human has revised the spec since — apply your role's re-critique rule."
     run_kiro > "$td/report/spec-review.md"
     info "wrote $td/report/spec-review.md"
     ;;

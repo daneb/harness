@@ -43,6 +43,9 @@ the marker-delimited spec blocks; your stdout is saved verbatim."
 approval. Survey this repository to check the spec against reality. Print ONLY \
 the critique in your role's format, ending with an ASSESSMENT line — your \
 stdout is saved verbatim as $rel/report/spec-review.md."
+    [ -f "$td/report/spec-review.prev.md" ] && prompt="$prompt This is a \
+re-critique: your prior critique is at $rel/report/spec-review.prev.md and the \
+human has revised the spec since — apply your role's re-critique rule."
     run_role --allowedTools "$readonly_tools" > "$td/report/spec-review.md"
     info "wrote $td/report/spec-review.md"
     ;;
