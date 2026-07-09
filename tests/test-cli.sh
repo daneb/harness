@@ -74,6 +74,40 @@ run git log -1 --format=%s; has "task(y)"
 run ls decisions; has "y.md"
 filehas decisions/*-y.md "VERDICT: pass"
 
+t "split stages drafts, forces Status: draft, preserves the original"
+mkrepo; mktask bundled; mkstub_kiro
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" run harness split bundled
+if [ "$RC" -eq 0 ]; then pass; else fail "split failed: $OUT"; fi
+hasfile .tasks/split-one/SPEC.md; hasfile .tasks/split-two/SPEC.md
+filehas .tasks/split-one/SPEC.md "Status: draft"   # stub wrote "approved"; must be forced
+filehas .tasks/split-two/SPEC.md "- \[ \] b"
+filehas .tasks/bundled/SPEC.md "Status: approved"  # original untouched
+no harness gate g0 split-one                        # staged drafts cannot pass G0
+
+t "split refuses to overwrite an existing task"
+mkrepo; mktask bundled; mkstub_kiro
+mkdir -p .tasks/split-one
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" run harness split bundled
+if [ "$RC" -ne 0 ]; then pass; else fail "split overwrote an existing task"; fi
+has "already exists"
+
+t "stats aggregates cost, agent time, and gate failures"
+mkrepo
+mkdir -p .tasks/s1/report
+cat > .tasks/s1/report/events.jsonl <<'EOF'
+{"ts":"2026-07-09T10:00:00","phase":"planner","model":"m","cost_usd":0.25,"duration_ms":60000}
+{"ts":"2026-07-09T10:01:00","phase":"gate:g1","result":"pass","duration_s":1}
+{"ts":"2026-07-09T10:02:00","phase":"implementer","model":"m","cost_usd":1.75,"duration_ms":120000}
+{"ts":"2026-07-09T10:03:00","phase":"gate:g2","result":"fail","duration_s":3}
+{"ts":"2026-07-09T10:04:00","phase":"gate:g2","result":"pass","duration_s":3}
+EOF
+run harness stats
+has "s1"; has "2.00"; has "3m00s"; has "g2:1"; has "g2 1/2"
+
+t "stats reports when no events exist"
+mkrepo
+no harness stats; has "no events"
+
 t "version prints version and commit"
 run harness version; has "harness 0.1.0"
 

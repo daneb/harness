@@ -77,6 +77,14 @@ and TNR (≥ 0.70) targets. If the reviewer isn't clearing those after ~20
 labeled pairs, fix `roles/reviewer.md` or change `reviewer_model` — don't
 trust the gate.
 
+`harness stats` aggregates every task's `events.jsonl`: agent cost and time,
+and gate failure rates by gate — the tool's own UX health metric.
+
+When `harness critique` flags a bundled spec, `harness split <task>` stages
+the partition as **draft** specs (your words reorganized, never authored;
+`Status: draft` forced mechanically) — you edit and approve each before
+anything proceeds.
+
 ## Layout
 
 ```

@@ -66,9 +66,9 @@ run() { OUT="$("$@" 2>&1)"; RC=$?; }
 ok()  { run "$@"; if [ "$RC" -eq 0 ]; then pass; else fail "expected exit 0 (got $RC): $*"; fi; }
 no()  { run "$@"; if [ "$RC" -ne 0 ]; then pass; else fail "expected failure: $*"; fi; }
 rc()  { local want="$1"; shift; run "$@"; if [ "$RC" -eq "$want" ]; then pass; else fail "expected exit $want (got $RC): $*"; fi; }
-has() { if printf '%s' "$OUT" | grep -q "$1"; then pass; else fail "output missing '$1'"; fi; }
+has() { if printf '%s' "$OUT" | grep -q -e "$1"; then pass; else fail "output missing '$1'"; fi; }
 hasfile()  { if [ -e "$1" ]; then pass; else fail "missing file: $1"; fi; }
-filehas()  { if grep -q "$2" "$1" 2>/dev/null; then pass; else fail "$1 missing '$2'"; fi; }
+filehas()  { if grep -q -e "$2" "$1" 2>/dev/null; then pass; else fail "$1 missing '$2'"; fi; }
 pass() { PASS=$((PASS+1)); }
 fail() {
   FAIL=$((FAIL+1)); echo "FAIL: $T — $1"
@@ -88,6 +88,9 @@ case "$p" in *"YOUR ROLE AND OUTPUT CONTRACT"*"# Role:"*) : ;; *) echo "ROLE-NOT
 case "$p" in
   *"Review the current uncommitted"*) printf '# Review — x\n\n## Blocking\n- none\n\n\033[32mVERDICT: pass\033[0m\n' ;;
   *"Critique the draft"*)             printf '# Spec critique — x\n\nASSESSMENT: ready\n' ;;
+  *"Partition the spec"*)
+    printf '=== SPEC: split-one ===\n# SPEC — split-one\n\nStatus: approved\n\n## Problem\np1\n\n## Acceptance Criteria\n- [ ] a\n'
+    printf '=== SPEC: split-two ===\n# SPEC — split-two\n\nStatus: draft\n\n## Problem\np2\n\n## Acceptance Criteria\n- [ ] b\n' ;;
   *)                                  printf '\033[1m# PLAN — x\033[0m\n\n## Task: x\nScope:\n- src/app.sh\n' ;;
 esac
 EOF

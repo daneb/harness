@@ -221,4 +221,8 @@ Start with shell/just scripts. Promote hot paths to a small Rust or TypeScript b
 - [ ] Diff-size budget default
 - [ ] Reviewer verdict schema (JSON vs structured markdown)
 - [ ] Vault writeback: automatic or prompted
+- [x] Spec revision (decided 2026-07-09): agents never apply critique fixes to
+  specs — revision converges to generation. The one sanctioned clerical form is
+  `harness split`: repartition the human's own words into staged drafts,
+  `Status: draft` forced mechanically, human approves each. Nothing beyond that.
 - [x] Observability (decided 2026-07-08): **the harness emits, it never serves.** Every agent run captures its full event stream to `report/<role>-transcript.jsonl`; gates and phases append usage/cost/duration to `report/events.jsonl`. Any dashboard/HTTP viewer is a separate external reader of those files — never a harness subcommand. Live watching of running agents is Layer 1's job (`zmx attach`).

@@ -30,6 +30,13 @@ run_role() {
 }
 
 case "$role" in
+  spec-splitter)
+    info "spec splitter (fresh context, read-only) → report/spec-split.md"
+    prompt="Partition the spec at $rel/SPEC.md into independently shippable \
+specs per your role's rules — reorganize only, never add intent. Print ONLY \
+the marker-delimited spec blocks; your stdout is saved verbatim."
+    run_role --allowedTools "$readonly_tools" > "$td/report/spec-split.md"
+    ;;
   spec-critic)
     info "spec critic (fresh context, read-only) → report/spec-review.md"
     prompt="Critique the draft specification at $rel/SPEC.md before human \

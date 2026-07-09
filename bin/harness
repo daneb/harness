@@ -12,6 +12,7 @@ harness — gated agent pipeline (gates, not virtue)
   harness init [dir]          set up .tasks/, decisions/, AGENTS.md, .harness.toml
   harness spec <task>         scaffold .tasks/<task>/SPEC.md (then: write it, approve it)
   harness critique <task>     fresh-context agent attacks your draft spec (advisory, pre-G0)
+  harness split <task>        stage a bundled spec as N draft specs (clerical; you approve each)
   harness plan <task>         G0, then planner agent writes PLAN.md, then G1
   harness implement <task>    implementer agent edits the tree, then G2
   harness review <task>       fresh-context reviewer writes review.md, then G2.5
@@ -20,6 +21,7 @@ harness — gated agent pipeline (gates, not virtue)
   harness gate <g> <task>     run one gate manually (g0|g1|g2|g2.5|g3)
   harness status <task>       show gate progress
   harness calibrate           reviewer verdicts vs your G3 decisions (TPR/TNR)
+  harness stats               cost, duration, gate failure rates across tasks
   harness doctor              preflight: git, toolchain, adapter, dependencies
   harness version             version + commit
   harness loc                 line count vs the ~1500-line budget
@@ -114,6 +116,31 @@ case "$cmd" in
     echo
     info "advisory only — G0 still requires your own 'Status: approved' in SPEC.md"
     ;;
+  split)
+    need_task "${1:-}"
+    require_adapter
+    [ -f "$td/SPEC.md" ] || die "no spec to split — .tasks/$name/SPEC.md missing"
+    "$adapter" spec-splitter "$td" "$root"
+    out="$td/report/spec-split.md"
+    [ -s "$out" ] || die "splitter produced no output"
+    slugs=$(awk '/^=== SPEC: /{print $3}' "$out")
+    [ -n "$slugs" ] || die "no '=== SPEC: <slug> ===' markers in splitter output — inspect $out"
+    for s in $slugs; do
+      case "$s" in
+        *[!a-z0-9-]*|"") die "splitter produced an invalid slug: '$s'" ;;
+      esac
+      [ -d "$root/.tasks/$s" ] && die "task already exists: $s — refusing to overwrite"
+    done
+    for s in $slugs; do
+      mkdir -p "$root/.tasks/$s/report"
+      awk -v want="$s" '/^=== SPEC: /{cur=$3; next} cur==want' "$out" > "$root/.tasks/$s/SPEC.md"
+      # Non-negotiable: staged splits are never pre-approved, whatever the agent wrote.
+      python3 -c "import re,sys; p=sys.argv[1]; t=open(p).read(); open(p,'w').write(re.sub(r'(?im)^status:.*$','Status: draft',t))" "$root/.tasks/$s/SPEC.md"
+      info "staged .tasks/$s/SPEC.md (Status: draft)"
+    done
+    info "reorganized, not authored — review and edit each split, approve each yourself,"
+    info "then retire .tasks/$name (its SPEC.md is untouched)"
+    ;;
   plan)
     need_task "${1:-}"
     require_adapter
@@ -201,6 +228,9 @@ case "$cmd" in
     ;;
   calibrate)
     python3 "$HARNESS_HOME/lib/calibrate.py" "$(repo_root .)"
+    ;;
+  stats)
+    python3 "$HARNESS_HOME/lib/stats.py" "$(repo_root .)"
     ;;
   doctor)
     fails=0

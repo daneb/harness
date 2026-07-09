@@ -29,6 +29,35 @@ Everything else follows from one rule:
 > that have no linter. Prompts can suggest behavior; they cannot enforce it.
 > Exit codes can.
 
+## Non-negotiables
+
+These do not bend for convenience, deadlines, or good arguments. A change to
+any of them is not a feature request; it is a different tool.
+
+1. **Humans author specs.** Agents may critique a spec (`harness critique`)
+   and reorganize one (`harness split` — the human's own words, repartitioned,
+   staged as drafts). They never add intent, and nothing agent-touched is ever
+   pre-approved: staged output is forced to `Status: draft` mechanically, not
+   by instruction.
+2. **G3 is a human reading the diff.** Interactive terminal, every time. There
+   is no flag, environment variable, or "CI mode" that automates it, and none
+   will be added.
+3. **Only gates advance the pipeline.** No skip flags, no force flags, no
+   admin override. If a gate is wrong, fix the gate — in the open, in a
+   commit.
+4. **No default toolchain.** A repo with no lint/typecheck/test config is
+   refused (exit 2), never accommodated. The repo defines its quality bar or
+   the harness does not work there.
+5. **The harness emits; it never serves.** Structured files on disk are the
+   entire observability contract. Dashboards, servers, and live agent views
+   belong to external tools reading those files.
+6. **Judgment stays concentrated at G0 and G3.** Features that smear human
+   attention across the middle phases — supervision UX, approval prompts
+   mid-pipeline, notification streams — are rejected on principle.
+7. **Small stays small.** ~1,500 product lines, a four-key config, three-ish
+   roles. Every addition is argued against the budget, and deletion is a
+   first-class operation.
+
 ## Why each rule exists
 
 **You write the spec. Agents may attack it; they never author it.**
@@ -41,6 +70,11 @@ plausible you didn't think through — approval theater. Writing the
 acceptance criteria is not overhead before the work; it *is* the work of
 understanding. Use `harness critique` to have a fresh agent find the holes
 in your draft — critique strengthens authorship, generation replaces it.
+When the critique flags a bundled spec, `harness split` stages the partition
+as draft specs — a purely clerical reorganization of your own words, each of
+which you still edit and approve yourself. That is the full extent of agent
+involvement in specs, deliberately: an agent that *applies* critique fixes
+converges, one convenience at a time, into an agent that writes specs.
 
 **The diff budget is 400 product lines because that's where human review
 stops working.** The most-cited empirical result in code review (the
