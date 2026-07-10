@@ -40,6 +40,12 @@ HARNESS_ADAPTER=kiro-cli run harness critique y
 if [ "$RC" -ne 0 ]; then pass; else fail "bad adapter accepted"; fi
 has "no such adapter"; has "claude kiro"
 
+t "reviewer_model naming an adapter fails loud, not three steps later"
+mkrepo; mktask y
+touch .tasks/y/report/g2.pass
+printf 'reviewer_model = "kiro"\n' > .harness.toml
+no harness review y; has "names an adapter, not a model"
+
 t "calibrate pairs verdicts with human decisions chronologically"
 mkrepo
 mkdir -p .tasks/t2/report .tasks/t3/report

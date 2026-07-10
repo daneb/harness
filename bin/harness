@@ -178,6 +178,9 @@ case "$cmd" in
         export HARNESS_REVIEWER_MODEL="${rm_val#*/}"
         ;;
       ?*)
+        # A bare value is a MODEL id. Catch the natural mistake of naming an
+        # adapter here — it fails three steps later as "model not available".
+        [ -x "$HARNESS_HOME/adapters/$rm_val.sh" ] && die "reviewer_model=\"$rm_val\" names an adapter, not a model. Use \"\" (current adapter, default model) or \"$rm_val/<model-id>\"."
         export HARNESS_REVIEWER_MODEL="$rm_val"
         ;;
     esac
