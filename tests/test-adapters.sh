@@ -19,6 +19,7 @@ import json,sys
 c=json.load(open('$TESTTMP/kagents/harness-planner.json'))
 assert c['name'] == 'harness-planner', 'name field is REQUIRED by kiro-cli'
 assert 'write' not in c['tools'], c['tools']
+assert 'shell' not in c['allowedTools'], 'trusted shell voids allowedCommands'
 assert 'allowedCommands' in c['toolsSettings']['shell']
 "
 
@@ -66,7 +67,9 @@ ok python3 -c "
 import json
 c=json.load(open('$TESTTMP/kagents/harness-implementer.json'))
 assert 'write' in c['tools']
+assert 'shell' not in c['allowedTools'], 'trusted shell voids deniedCommands'
 assert any('git commit' in d for d in c['toolsSettings']['shell']['deniedCommands'])
+assert any(d.startswith('npm') for d in c['toolsSettings']['shell']['allowedCommands'])
 "
 
 t "kiro reviewer honors cross-model override"

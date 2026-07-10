@@ -39,16 +39,26 @@ cfg = {
     "prompt": "file://" + prompt_file,
     "tools": ["read", "write", "shell"] if role == "implementer" else ["read", "shell"],
 }
-cfg["allowedTools"] = list(cfg["tools"])  # non-interactive mode fails fast on untrusted tools
+# NEVER blanket-trust shell: kiro warns that a trusted shell tool OVERRIDES
+# toolsSettings entirely (allowedCommands and deniedCommands both void).
+# Trust only read/write; shell approval is per-command via allowedCommands,
+# and unlisted commands fail fast in non-interactive mode — as they should.
+ro_shell = ["rg .*", "ls .*", "find .*", "wc .*", "cat .*",
+            "git diff.*", "git status.*", "git log.*"]
 if role == "implementer":
+    cfg["allowedTools"] = ["read", "write"]
     cfg["toolsSettings"] = {"shell": {
+        "allowedCommands": ro_shell + [
+            "npm .*", "npx .*", "yarn .*", "pnpm .*", "node .*", "vitest .*",
+            "jest .*", "make .*", "just .*", "go .*", "cargo .*",
+            "pytest .*", "python .*", "python3 .*", "ruff .*", "mypy .*", "tsc .*"],
         "deniedCommands": ["git commit.*", "git push.*", "git merge.*"],
         "autoAllowReadonly": True,
     }}
-else:  # planner and reviewer are read-only: search/inspect commands only
+else:  # planner, reviewer, spec roles: read-only inspection commands only
+    cfg["allowedTools"] = ["read"]
     cfg["toolsSettings"] = {"shell": {
-        "allowedCommands": ["rg .*", "ls .*", "find .*", "wc .*",
-                            "git diff.*", "git status.*", "git log.*"],
+        "allowedCommands": ro_shell,
         "autoAllowReadonly": True,
     }}
 if role == "reviewer" and model:
