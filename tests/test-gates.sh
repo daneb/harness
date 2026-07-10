@@ -131,6 +131,12 @@ mkrepo; mktask x; printf 'review_blocking = false\n' > .harness.toml
 printf '# R\n\nVERDICT: concerns\n' > .tasks/x/report/review.md
 ok "$G/g25-review.sh" "$PWD/.tasks/x" "$PWD"; has "non-blocking"
 
+t "G2.5 parses decorated verdicts (bold, header, mixed case)"
+mkrepo; mktask x; printf '# R\n\n**VERDICT: pass**\n' > .tasks/x/report/review.md
+ok "$G/g25-review.sh" "$PWD/.tasks/x" "$PWD"
+printf '# R\n\n## Verdict: blocking\n' > .tasks/x/report/review.md
+no "$G/g25-review.sh" "$PWD/.tasks/x" "$PWD"
+
 t "G2.5 passes on pass and logs the verdict event"
 mkrepo; mktask x; printf '# R\n\nVERDICT: pass\n' > .tasks/x/report/review.md
 ok "$G/g25-review.sh" "$PWD/.tasks/x" "$PWD"

@@ -11,9 +11,16 @@ rv="$td/report/review.md"
 
 [ -f "$rv" ] || die "G2.5: $rv not found — run 'harness review <task>'"
 
-verdict=$(grep -iE '^VERDICT:' "$rv" | tail -1 | cut -d: -f2 \
-          | awk '{print tolower($1)}' || true)
-[ -n "$verdict" ] || die "G2.5: review.md has no 'VERDICT:' line"
+# Tolerate markdown decoration (**VERDICT: pass**, ## Verdict: pass) but
+# still require the keyword — a review without a verdict is not a review.
+verdict=$(tr '[:upper:]' '[:lower:]' < "$rv" \
+          | sed -nE 's/^[^a-z]*verdict[[:space:]]*:[[:space:]]*([a-z]+).*/\1/p' \
+          | tail -1 || true)
+[ -n "$verdict" ] || {
+  echo "G2.5: review.md has no 'VERDICT:' line — the reviewer ignored the output contract." >&2
+  echo "G2.5: inspect $rv (and report/reviewer-transcript.*), then re-run 'harness review'." >&2
+  exit 1
+}
 
 # Calibration label, paired with the G3 human decision by `harness calibrate`.
 printf '{"ts":"%s","phase":"review-verdict","verdict":"%s"}\n' \
