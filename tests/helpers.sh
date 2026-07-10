@@ -86,7 +86,7 @@ mkstub_kiro() {
 p="$5"
 case "$p" in *"YOUR ROLE AND OUTPUT CONTRACT"*"# Role:"*) : ;; *) echo "ROLE-NOT-INLINED" >&2; exit 1 ;; esac
 case "$p" in
-  *"Review the current uncommitted"*) printf '# Review — x\n\n## Blocking\n- none\n\n\033[32mVERDICT: pass\033[0m\n' ;;
+  *"Review the diff at"*) printf '# Review — x\n\n## Blocking\n- none\n\n\033[32mVERDICT: pass\033[0m\n' ;;
   *"Critique the draft"*)             printf '# Spec critique — x\n\nASSESSMENT: ready\n' ;;
   *"Partition the spec"*)
     printf '=== SPEC: split-one ===\n# SPEC — split-one\n\nStatus: approved\n\n## Problem\np1\n\n## Acceptance Criteria\n- [ ] a\n'
