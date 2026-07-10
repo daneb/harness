@@ -172,7 +172,18 @@ incomplete (fix the plan, re-gate G1, then G2). Uncommitted scaffolding
    features. The spec critic flags this — listen to it at critique time,
    when the fix costs an edit instead of a re-implementation.
 
-**G2.5: blocking/concerns** — read `report/review.md` before anything else.
+**A gate exposes a missing prerequisite mid-task** (you assumed tests, docs,
+or a capability existed — it doesn't). Route by where the missing piece
+belongs. Part of the code your task touches → it's yours: add it to the
+plan's Scope, re-gate G1, keep going. Pre-existing code you depend on but
+don't touch → it's a prerequisite task: `git stash push -u` the feature, run
+the small task through its own full pipeline, **merge it before you pop**
+(merge commits with `git add -A`, so popped files in the tree get swept in),
+then resume. A false assumption baked into the spec itself → fix the spec,
+re-approve, re-plan. The stash dance exists because v1 shares one working
+tree — G2 sees every uncommitted change in the repo — and disappears when
+per-task worktrees land (build step 3). A prerequisite spec is allowed to be
+five lines; small units through the pipeline is the system working.
 If the reviewer is right, the task goes back to implement (fresh context,
 with the review as input). If the reviewer is wrong, note it — your G3
 decision is recorded, and `harness calibrate` turns your disagreements into
