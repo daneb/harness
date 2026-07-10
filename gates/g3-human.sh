@@ -7,6 +7,13 @@ source "$(cd "$(dirname "$0")/.." && pwd)/lib/common.sh"
 td="${1:?usage: g3-human.sh <task_dir> <repo_root>}"
 root="${2:?usage: g3-human.sh <task_dir> <repo_root>}"
 
+# Human review is the LAST gate: refuse to spend the human's attention — or
+# collect an approval — while any machine gate is still red.
+for g in g0 g1 g2 g2.5; do
+  [ -f "$td/report/$g.pass" ] \
+    || die "G3: gate $g has not passed — human review comes after the machine gates, in order"
+done
+
 [ -t 0 ] || die "G3: requires an interactive terminal — human review is never automated"
 
 untracked=$(git -C "$root" ls-files --others --exclude-standard | grep -vE '^(\.tasks/|decisions/)' || true)

@@ -143,6 +143,12 @@ ok "$G/g25-review.sh" "$PWD/.tasks/x" "$PWD"
 filehas .tasks/x/report/events.jsonl '"phase":"review-verdict","verdict":"pass"'
 
 # ---------- G3 ----------
+t "G3 refuses to run before the machine gates have passed"
+mkrepo; mktask x
+touch .tasks/x/report/g0.pass .tasks/x/report/g1.pass .tasks/x/report/g2.pass
+no "$G/g3-human.sh" "$PWD/.tasks/x" "$PWD" < /dev/null; has "gate g2.5 has not passed"
+
 t "G3 refuses without a TTY — human review is never automated"
 mkrepo; mktask x
+touch .tasks/x/report/g0.pass .tasks/x/report/g1.pass .tasks/x/report/g2.pass .tasks/x/report/g2.5.pass
 no "$G/g3-human.sh" "$PWD/.tasks/x" "$PWD" < /dev/null; has "interactive"

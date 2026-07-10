@@ -88,10 +88,17 @@ t "calibrate reports when no labels exist"
 mkrepo
 no harness calibrate; has "no (verdict, human decision) pairs"
 
-t "merge requires G3 and writes commit + decision record"
+t "merge refuses when any gate is missing — g3 alone is not enough"
+mkrepo; mktask y
+touch .tasks/y/report/g3.pass
+echo "2026-07-09 by test" > .tasks/y/report/g3-approved
+no harness merge y; has "g0 has not passed"
+
+t "merge requires every gate and writes commit + decision record"
 mkrepo; mktask y
 no harness merge y
-touch .tasks/y/report/g3.pass
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass .tasks/y/report/g2.pass \
+      .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass
 echo "2026-07-09 by test" > .tasks/y/report/g3-approved
 printf '# R\n\nVERDICT: pass\n' > .tasks/y/report/review.md
 ok harness merge y

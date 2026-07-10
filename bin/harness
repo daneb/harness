@@ -207,7 +207,7 @@ case "$cmd" in
     ;;
   merge)
     need_task "${1:-}"
-    require_pass g3
+    for g in $GATES; do require_pass "$g"; done   # merge means EVERY gate passed
     [ -f "$td/report/g3-approved" ] || die "no human approval record"
     rec="$root/decisions/$(date +%Y-%m-%d)-$name.md"
     mkdir -p "$root/decisions"
