@@ -187,6 +187,30 @@ you'd fix faster than explain → fix it yourself and let it re-run the gates.
 Every rejection is also a calibration label: the reviewer passed something
 you caught, and `harness calibrate` remembers.
 
+## The friction is the feedback
+
+The gates will jar you in ways plain agent use never does — a 419-line diff
+refused over a 400-line budget, a critique that stings, a spec sent back for
+splitting. When that happens, notice what the discomfort is *about*: scope,
+testability, reviewability. That is precisely the feedback you asked a
+quality system for — it just arrives as friction at the moment of violation
+rather than as a compliment. There are only two delivery schedules for this
+information: at the gate, while it costs an edit, or in the 30–90-day churn
+numbers, after it costs a revert. There is no third option where the code
+was quietly fine.
+
+This is also the industry's live question, mostly unasked. Generation became
+free; comprehension didn't; most teams are resolving that tension by merging
+800-line agent diffs on green CI and never measuring what happens to them.
+The harness's bet is to make the tension *visible and negotiable* instead:
+when friction feels wrong, the legitimate responses are calibration in the
+open (turn the dial, commit the reason) or fixing the gate itself — never a
+quiet workaround. `harness stats` then turns "is this friction paying for
+itself" from a feeling into a number: gate failures shifting from harness
+gaps to genuine catches, budgets calibrating once versus creeping monthly.
+A tool that stops jarring you because you got better is working; one that
+stops jarring you because you routed around it has already failed.
+
 ## What the harness is not
 
 - **Not an interactive assistant.** For exploration, debugging, and
