@@ -73,10 +73,13 @@ in $rel/report/review.md."
     margs=()
     [ -n "$model" ] && margs=(--model "$model")
     info "reviewer (fresh context, read-only${model:+, model=$model}) → report/review.md"
-    prompt="Review the current uncommitted diff ('git diff HEAD' plus untracked \
-files) against $rel/SPEC.md and $rel/PLAN.md. You did not write this code. \
-Print ONLY the review in your role's format, ending with a VERDICT line — your \
-stdout is saved verbatim as $rel/report/review.md."
+    prompt="Review the diff at $rel/report/diff.patch (untracked files are \
+listed at its end — read their content at those paths) against $rel/SPEC.md \
+and $rel/PLAN.md. Gate G2 already executed the repo's lint/typecheck/tests; \
+its output including test results is $rel/report/g2.log — verify test \
+substance, not execution. You did not write this code. Print ONLY the review \
+in your role's format, ending with a VERDICT line — your stdout is saved \
+verbatim as $rel/report/review.md."
     run_role --allowedTools "$readonly_tools" ${margs[@]+"${margs[@]}"} > "$td/report/review.md"
     info "wrote $td/report/review.md"
     ;;

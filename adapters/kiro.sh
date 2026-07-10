@@ -74,7 +74,7 @@ done
 # to hold the output-format contract.
 run_kiro() {
   local tsf="$td/report/$role-transcript.kiro.txt" t0 mjson esc full_prompt
-  full_prompt="$(printf 'YOUR ROLE AND OUTPUT CONTRACT — follow exactly:\n\n%s\n\n---\n\nTASK:\n%s' "$(cat "$sys")" "$prompt")"
+  full_prompt="$(printf 'YOUR ROLE AND OUTPUT CONTRACT — follow exactly:\n\n%s\n\n---\n\nYour shell already runs at the repository root. Never prefix commands with cd — the command allowlist matches from the first word.\n\nTASK:\n%s' "$(cat "$sys")" "$prompt")"
   t0=$(date +%s)
   (cd "$wd" && "$KIRO_BIN" chat --no-interactive --agent "$agent" "$full_prompt") \
     > "$tsf" 2> "$td/report/$role-kiro.err" \
@@ -133,10 +133,13 @@ in $rel/report/review.md."
     ;;
   reviewer)
     info "reviewer (kiro, fresh context, read-only${model:+, model=$model}) → report/review.md"
-    prompt="Review the current uncommitted diff ('git diff HEAD' plus untracked \
-files) against $rel/SPEC.md and $rel/PLAN.md. You did not write this code. \
-Print ONLY the review in your agent prompt's format, ending with a VERDICT \
-line — your response is saved verbatim as $rel/report/review.md."
+    prompt="Review the diff at $rel/report/diff.patch (untracked files are \
+listed at its end — read their content at those paths) against $rel/SPEC.md \
+and $rel/PLAN.md. Gate G2 already executed the repo's lint/typecheck/tests; \
+its output including test results is $rel/report/g2.log — verify test \
+substance, not execution. You did not write this code. Print ONLY the review \
+in your agent prompt's format, ending with a VERDICT line — your response is \
+saved verbatim as $rel/report/review.md."
     run_kiro > "$td/report/review.md"
     info "wrote $td/report/review.md"
     ;;

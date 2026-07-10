@@ -184,6 +184,14 @@ case "$cmd" in
         export HARNESS_REVIEWER_MODEL="$rm_val"
         ;;
     esac
+    # The reviewer is read-only and diff-blind by permission; hand it the diff
+    # as a file — evidence in files, not shell privileges.
+    {
+      git -C "$root" diff HEAD
+      echo
+      echo "# Untracked files (new; read their full content at these paths):"
+      git -C "$root" ls-files --others --exclude-standard | grep -vE '^(\.tasks/|decisions/)' || true
+    } > "$td/report/diff.patch"
     "$r_adapter" reviewer "$td" "$root"
     echo
     render "$td/report/review.md"    # shown before the gate: on a block, the review IS the news

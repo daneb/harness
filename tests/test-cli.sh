@@ -40,6 +40,25 @@ HARNESS_ADAPTER=kiro-cli run harness critique y
 if [ "$RC" -ne 0 ]; then pass; else fail "bad adapter accepted"; fi
 has "no such adapter"; has "claude kiro"
 
+t "review hands the reviewer the diff and G2 log as files"
+mkrepo; mktask y
+touch .tasks/y/report/g2.pass
+echo "changed" >> src/app.sh
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+printf '%s' "$5" > "$KCAP"
+printf '# Review\n\nVERDICT: pass\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness review y
+if [ "$RC" -eq 0 ]; then pass; else fail "review failed: $OUT"; fi
+filehas .tasks/y/report/diff.patch "changed"
+filehas "$TESTTMP/prompt.txt" "diff.patch"
+filehas "$TESTTMP/prompt.txt" "g2.log"
+filehas "$TESTTMP/prompt.txt" "Never prefix commands with cd"
+
 t "reviewer_model naming an adapter fails loud, not three steps later"
 mkrepo; mktask y
 touch .tasks/y/report/g2.pass
