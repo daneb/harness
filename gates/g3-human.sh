@@ -9,18 +9,17 @@ root="${2:?usage: g3-human.sh <task_dir> <repo_root>}"
 
 [ -t 0 ] || die "G3: requires an interactive terminal — human review is never automated"
 
-echo "── Changed files ──────────────────────────────────────"
-git -C "$root" status --short
-echo "── Diff (q to quit pager) ─────────────────────────────"
-git -C "$root" diff HEAD --color=always | ${PAGER:-less -R}
-
 untracked=$(git -C "$root" ls-files --others --exclude-standard | grep -vE '^(\.tasks/|decisions/)' || true)
-if [ -n "$untracked" ]; then
-  echo "── New (untracked) files — review each ────────────────"
+{
+  echo "── Changed files ──────────────────────────────────────"
+  git -C "$root" status --short
+  echo "── Diff ───────────────────────────────────────────────"
+  git -C "$root" diff HEAD --color=always
   for f in $untracked; do
-    echo "· $f"; sed 's/^/    /' "$root/$f"
+    printf '\n── New file: %s ──\n' "$f"
+    sed 's/^/    /' "$root/$f"
   done
-fi
+} | ${PAGER:-less -R}
 
 # Human decision is the ground-truth label for reviewer calibration.
 emit_decision() {
