@@ -185,9 +185,10 @@ case "$cmd" in
         ;;
     esac
     "$r_adapter" reviewer "$td" "$root"
-    run_gate g2.5
     echo
-    render "$td/report/review.md"
+    render "$td/report/review.md"    # shown before the gate: on a block, the review IS the news
+    echo
+    run_gate g2.5
     info "next: harness approve $name"
     ;;
   approve)
