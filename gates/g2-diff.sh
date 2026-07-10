@@ -52,8 +52,8 @@ while IFS= read -r f; do
 done <<EOF
 $(git -C "$root" ls-files --others --exclude-standard)
 EOF
-[ "$lines" -le "$budget" ] \
-  || die "G2: diff is $lines product lines (budget $budget; $tlines test lines exempt)"
+[ "$lines" -le "$budget" ] || die "G2: diff is $lines product lines (budget $budget; $tlines test lines exempt).
+G2: One feature? Raise diff_budget_lines in .harness.toml, committed with a reason. Several? Split. (PHILOSOPHY.md, field guide)"
 echo "G2: diff $lines/$budget product lines ($tlines test lines exempt), all changes in scope"
 
 # --- Run the repo's own checks. ---

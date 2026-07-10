@@ -89,6 +89,17 @@ teaches agents to write fewer tests. Never let two controls fight: tests are
 demanded by the implementer role and inspected by the reviewer, so the
 budget deliberately ignores them.
 
+**400 is a calibration starting point, not a constant of nature.** Lines are
+a proxy for review burden, and the proxy pinches at the edges: greenfield
+work (a new self-contained module) reads far faster per line than the same
+count scattered across existing files, so early-phase repos legitimately dial
+the budget up — per repo, in `.harness.toml`, committed with a reason. The
+visible commit is the ratchet-brake: one calibration is tuning, a history of
+creeping bumps is your specs growing, and `harness stats` will show which
+story you're in. What never changes: the number must keep meaning "product
+lines a human will genuinely review," and a coherent slightly-over feature
+beats two mutilated fragments that duck the number.
+
 **The reviewer is fresh-context, read-only, and ideally a different model.**
 Self-review is contaminated review — the author (human or model) sees what
 they meant, not what they wrote. The reviewer shares no context with the
