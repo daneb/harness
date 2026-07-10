@@ -77,6 +77,19 @@ edit .tasks/x/PLAN.md "- src/app.sh" "- src/app.sh
 mkdir -p tests; python3 -c "open('tests/big.test.sh','w').write('# t\n'*200)"
 ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "test lines exempt"
 
+t "G2 allows a lockfile when its manifest is in scope, exempt from budget"
+mkrepo; mktask x; printf 'diff_budget_lines = 3\n' > .harness.toml
+edit .tasks/x/PLAN.md "- src/app.sh" "- src/app.sh
+- package.json (new)"
+echo '{"name":"r","scripts":{"test":"echo ok"}}' > package.json
+python3 -c "open('package-lock.json','w').write('x\n'*200)"
+ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
+
+t "G2 flags a lockfile changing without its manifest"
+mkrepo; mktask x
+echo 'lock' > package-lock.json
+no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "dependency drift"
+
 t "G2 discovers monorepo sub-package toolchains"
 mkrepo notool; mktask x
 echo '{"name":"m","workspaces":["packages/*"]}' > package.json

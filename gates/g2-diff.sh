@@ -27,8 +27,15 @@ changed=$(git -C "$root" status --porcelain -uall | awk '{print $NF}' \
           | grep -vE '^(\.tasks/|decisions/|\.harness\.toml$)' || true)
 fail=0
 for f in $changed; do
-  echo "$scope" | grep -qxF "$f" \
-    || { echo "G2: file changed outside declared scope: $f" >&2; fail=1; }
+  if echo "$scope" | grep -qxF "$f"; then continue; fi
+  m=$(lockfile_manifest "$f")
+  if [ -n "$m" ]; then
+    if echo "$scope" | grep -qxF "$m"; then continue; fi
+    echo "G2: lockfile $f changed but its manifest $m is not in scope (dependency drift?)" >&2
+  else
+    echo "G2: file changed outside declared scope: $f" >&2
+  fi
+  fail=1
 done
 [ "$fail" -eq 0 ] || die "G2: scope violation"
 
@@ -39,6 +46,7 @@ lines=0; tlines=0
 while read -r add del f; do
   [ -n "$f" ] || continue
   case "$add" in ''|*[!0-9]*) continue ;; esac   # binary files report "-"
+  [ -n "$(lockfile_manifest "$f")" ] && continue  # machine-generated, never counted
   if is_test_file "$f"; then tlines=$((tlines + add + del)); else lines=$((lines + add + del)); fi
 done <<EOF
 $(git -C "$root" diff HEAD --numstat)
@@ -47,6 +55,7 @@ while IFS= read -r f; do
   [ -n "$f" ] || continue
   case "$f" in .tasks/*|decisions/*) continue;; esac
   [ -f "$root/$f" ] || continue
+  [ -n "$(lockfile_manifest "$f")" ] && continue
   if is_test_file "$f"; then tlines=$((tlines + $(wc -l < "$root/$f")))
   else lines=$((lines + $(wc -l < "$root/$f"))); fi
 done <<EOF

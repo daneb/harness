@@ -92,6 +92,26 @@ PY
   if [ -f "$d/pytest.ini" ]; then echo "pytest -q"; fi
 }
 
+# lockfile_manifest <path> — the manifest a lockfile derives from (same dir),
+# or nothing if the path is not a lockfile. A lockfile is in scope iff its
+# manifest is: derived output rides with its source, and never counts toward
+# the diff budget (machine-generated, reviewed by provenance not by line).
+lockfile_manifest() {
+  local d b m=""
+  d=$(dirname "$1"); b=$(basename "$1")
+  case "$b" in
+    package-lock.json|npm-shrinkwrap.json|yarn.lock|pnpm-lock.yaml|bun.lockb) m="package.json" ;;
+    Cargo.lock)   m="Cargo.toml" ;;
+    go.sum)       m="go.mod" ;;
+    poetry.lock|uv.lock) m="pyproject.toml" ;;
+    Pipfile.lock) m="Pipfile" ;;
+    Gemfile.lock) m="Gemfile" ;;
+    composer.lock) m="composer.json" ;;
+  esac
+  [ -n "$m" ] || return 0
+  case "$d" in .) echo "$m" ;; *) echo "$d/$m" ;; esac
+}
+
 # is_test_file <repo-relative path> — heuristic shared by the G2 diff budget
 # (test lines are exempt: a size cap must never discourage tests) and any
 # future test-efficacy checks.
