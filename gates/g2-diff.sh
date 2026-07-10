@@ -66,6 +66,7 @@ G2: One feature? Raise diff_budget_lines in .harness.toml, committed with a reas
 echo "G2: diff $lines/$budget product lines ($tlines test lines exempt), all changes in scope"
 
 # --- Run the repo's own checks. ---
+info "G2: commands below are discovered from this repo's own manifests — to change one, change the script it names (specs instruct agents; manifests instruct gates)"
 while IFS= read -r c; do
   info "G2 check: $c"
   (cd "$root" && eval "$c") || die "G2: check failed: $c"

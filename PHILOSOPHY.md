@@ -152,6 +152,19 @@ widen a scope just to make G1 pass.
 **G2: REFUSED (exit 2)** — the repo declares no quality bar. Add one, commit
 it, retry. The harness will not lower itself to repos that check nothing.
 
+**G2 runs commands you didn't write, or won't run the one you want** — the
+commands are *discovered* from your manifests: scripts named exactly `lint`,
+`typecheck`, `test` (root and sub-packages), Makefile/justfile targets of the
+same names, and the standard Rust/Go/Python declarations. `harness doctor`
+lists them. The harness never invents or edits a command, and no amount of
+spec-writing changes one — **specs instruct agents; manifests instruct
+gates.** If coverage (or anything else) is part of your quality bar, it goes
+*inside* the script that declares the bar: `"test": "vitest run --coverage"`
+means G2 runs and enforces it, and its output lands in `g2.log` where the
+reviewer is told to look. A script named `test:coverage` is invisible to
+discovery — deliberately: the harness runs your declared bar, not everything
+plausible.
+
 **G2: scope violation** — a file changed outside the plan's declared Scope.
 Either the agent drifted (revert the stray change) or the plan was
 incomplete (fix the plan, re-gate G1, then G2). Uncommitted scaffolding

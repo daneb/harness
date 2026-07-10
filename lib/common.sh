@@ -47,7 +47,7 @@ def scripts(p):
 wanted = ("lint", "typecheck", "test")
 for s in wanted:
     if s in scripts(root):
-        print("npm run %s --silent" % s)
+        print("npm run %s" % s)
 ws = json.load(open(os.path.join(root, "package.json"))).get("workspaces", [])
 if isinstance(ws, dict):
     ws = ws.get("packages", [])
@@ -62,7 +62,7 @@ for pat in list(ws) + ["*"]:
 for m in sorted(members):
     for s in wanted:
         if s in scripts(os.path.join(root, m)):
-            print("npm --prefix %s run %s --silent" % (m, s))
+            print("npm --prefix %s run %s" % (m, s))
 PY
   fi
   if [ -f "$d/Makefile" ]; then
