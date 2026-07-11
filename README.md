@@ -119,4 +119,4 @@ fires).
 | 3 | Worktree + container isolation | — |
 | 4 | zmx fan-out, `zmx wait` join, G1 disjoint-scope (check already in G1) | — |
 | 5 | Second adapter + cross-model review | ✅ kiro.sh + `reviewer_model = "adapter/model"` (Copilot pending) |
-| 6 | Writeback to Obsidian vault (decisions/ writeback already in `merge`) | — |
+| 6 | Writeback to Obsidian vault (decisions/ writeback already in `merge`) | ✅ set `HARNESS_VAULT=/path/to/vault` |

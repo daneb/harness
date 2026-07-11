@@ -101,10 +101,33 @@ touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass .tasks/y/report/g2.pass \
       .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass
 echo "2026-07-09 by test" > .tasks/y/report/g3-approved
 printf '# R\n\nVERDICT: pass\n' > .tasks/y/report/review.md
+printf '{"ts":"t","phase":"implementer","cost_usd":1.25,"duration_ms":5}\n' > .tasks/y/report/events.jsonl
 ok harness merge y
 run git log -1 --format=%s; has "task(y)"
 run ls decisions; has "y.md"
 filehas decisions/*-y.md "VERDICT: pass"
+filehas decisions/*-y.md 'Agent cost: \$1.25'
+
+t "merge writes the record to HARNESS_VAULT when configured"
+mkrepo; mktask y
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass .tasks/y/report/g2.pass \
+      .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass
+echo "2026-07-09 by test" > .tasks/y/report/g3-approved
+printf '# R\n\nVERDICT: pass\n' > .tasks/y/report/review.md
+mkdir -p "$TESTTMP/vault"
+HARNESS_VAULT="$TESTTMP/vault" run harness merge y
+if [ "$RC" -eq 0 ]; then pass; else fail "merge with vault failed: $OUT"; fi
+filehas "$TESTTMP/vault/harness/repo/"*-y.md "tags: \[harness, decision-record\]"
+filehas "$TESTTMP/vault/harness/repo/"*-y.md "VERDICT: pass"
+
+t "merge with a bogus vault path warns but still merges"
+mkrepo; mktask y
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass .tasks/y/report/g2.pass \
+      .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass
+echo "2026-07-09 by test" > .tasks/y/report/g3-approved
+HARNESS_VAULT="$TESTTMP/nonexistent" run harness merge y
+if [ "$RC" -eq 0 ]; then pass; else fail "merge failed on bogus vault: $OUT"; fi
+has "writeback skipped"
 
 t "split stages drafts, forces Status: draft, preserves the original"
 mkrepo; mktask bundled; mkstub_kiro

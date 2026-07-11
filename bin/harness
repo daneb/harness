@@ -213,6 +213,9 @@ case "$cmd" in
     rec="$root/decisions/$(date +%Y-%m-%d)-$name.md"
     mkdir -p "$root/decisions"
     verdict=$(grep -iE '^VERDICT:' "$td/report/review.md" 2>/dev/null | tail -1 || echo "VERDICT: (no review)")
+    cost=$(python3 -c "import json,sys; print(round(sum((json.loads(l).get('cost_usd') or 0) for l in open(sys.argv[1]) if l.strip()), 2))" \
+           "$td/report/events.jsonl" 2>/dev/null || echo "n/a")
+    dstat=$(git -C "$root" diff HEAD --stat 2>/dev/null | tail -1 | sed 's/^ *//')
     {
       echo "# Decision record — $name"
       echo
@@ -220,6 +223,8 @@ case "$cmd" in
       echo "- Review: $verdict"
       echo "- Approved: $(cat "$td/report/g3-approved")"
       echo "- Gates: $(cd "$td/report" && for f in *.pass; do [ -e "$f" ] && printf '%s ' "${f%.pass}"; done)"
+      echo "- Diff: ${dstat:-n/a}"
+      echo "- Agent cost: \$$cost"
       echo
       echo "## Spec"
       echo
@@ -228,6 +233,26 @@ case "$cmd" in
     git -C "$root" add -A
     git -C "$root" commit -q -m "task($name): merge via harness — gates G0–G3 passed"
     info "merged $(git -C "$root" rev-parse --short HEAD); decision record: decisions/$(basename "$rec")"
+    # Vault writeback (build step 6): automatic when HARNESS_VAULT points at a
+    # directory (your Obsidian vault); the in-repo decisions/ stays canonical.
+    if [ -n "${HARNESS_VAULT:-}" ] && [ -d "$HARNESS_VAULT" ]; then
+      vdir="$HARNESS_VAULT/harness/$(basename "$root")"
+      mkdir -p "$vdir"
+      {
+        echo "---"
+        echo "date: $(date +%Y-%m-%d)"
+        echo "repo: $(basename "$root")"
+        echo "task: $name"
+        echo "commit: $(git -C "$root" rev-parse --short HEAD)"
+        echo "tags: [harness, decision-record]"
+        echo "---"
+        echo
+        cat "$rec"
+      } > "$vdir/$(basename "$rec")"
+      info "vault: $vdir/$(basename "$rec")"
+    elif [ -n "${HARNESS_VAULT:-}" ]; then
+      info "HARNESS_VAULT is set but not a directory — vault writeback skipped"
+    fi
     ;;
   gate)
     g="${1:-}"; [ -n "$g" ] || die "usage: harness gate <g0|g1|g2|g2.5|g3> <task>"
@@ -273,6 +298,10 @@ case "$cmd" in
       else ck warn ".harness.toml" "using defaults (harness init writes one)"; fi
     else
       ck fail "git repo" "not inside one — the harness requires git"
+    fi
+    if [ -n "${HARNESS_VAULT:-}" ]; then
+      if [ -d "$HARNESS_VAULT" ]; then ck ok "vault" "$HARNESS_VAULT"
+      else ck warn "vault" "HARNESS_VAULT set but not a directory — writeback will skip"; fi
     fi
     a="${HARNESS_ADAPTER:-claude}"
     if [ -x "$HARNESS_HOME/adapters/$a.sh" ]; then ck ok "adapter" "$a"

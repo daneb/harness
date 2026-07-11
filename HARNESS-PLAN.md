@@ -220,7 +220,10 @@ Start with shell/just scripts. Promote hot paths to a small Rust or TypeScript b
   and keep gates/adapters as scripts calling it.
 - [ ] Diff-size budget default
 - [ ] Reviewer verdict schema (JSON vs structured markdown)
-- [ ] Vault writeback: automatic or prompted
+- [x] Vault writeback (decided 2026-07-11): automatic when `HARNESS_VAULT` (env,
+  machine-level — a vault is a fact about the machine, not the repo) points at a
+  directory; the record is copied to `$HARNESS_VAULT/harness/<repo>/` with
+  Obsidian frontmatter. In-repo `decisions/` stays canonical. Unset = skipped.
 - [x] Spec revision (decided 2026-07-09): agents never apply critique fixes to
   specs — revision converges to generation. The one sanctioned clerical form is
   `harness split`: repartition the human's own words into staged drafts,
