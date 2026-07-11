@@ -90,6 +90,34 @@ mkrepo; mktask x
 echo 'lock' > package-lock.json
 no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "dependency drift"
 
+t "G2 scope entries tolerate trailing whitespace from hand-edited plans"
+mkrepo; mktask x
+printf '# PLAN — x\n\n## Task: x\nScope:\n- src/app.sh   \nSymbols:\n- greet\n' > .tasks/x/PLAN.md
+echo '# ok' >> src/app.sh
+ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
+
+t "G2 directory scope covers everything beneath it, including deletions"
+mkrepo; mktask x
+mkdir -p legacy/deep; echo a > legacy/a.txt; echo b > legacy/deep/b.txt
+git add -A; git commit -qm legacy
+edit .tasks/x/PLAN.md "- src/app.sh" "- legacy/"
+rm -r legacy
+no_scope_rogue() { :; }
+ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
+echo rogue > rogue.txt
+no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "rogue.txt"
+
+t "G2 budget: mass deletion is free, additions still counted"
+mkrepo; mktask x; printf 'diff_budget_lines = 3\n' > .harness.toml
+python3 -c "open('src/big.sh','w').write('# x\n'*500)"
+git add -A; git commit -qm big
+edit .tasks/x/PLAN.md "- src/app.sh" "- src/app.sh
+- src/big.sh"
+rm src/big.sh
+ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "500 deleted free"
+printf 'a\nb\nc\nd\ne\n' >> src/app.sh
+no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "adds 5 product lines"
+
 t "G2 discovers monorepo sub-package toolchains"
 mkrepo notool; mktask x
 echo '{"name":"m","workspaces":["packages/*"]}' > package.json

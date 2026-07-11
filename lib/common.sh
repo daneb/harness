@@ -146,6 +146,6 @@ plan_list() {
     /^Scope:/    { sect="scope"; next }
     /^Symbols:/  { sect="sym";   next }
     /^[A-Za-z#]/ { sect="" }
-    sect==S && /^- / && (want=="" || t==want) { sub(/^- +/,""); print }
+    sect==S && /^- / && (want=="" || t==want) { sub(/^- +/,""); sub(/[ \t\r]+$/,""); print }
   ' "$1"
 }

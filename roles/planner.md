@@ -19,7 +19,10 @@ Steps:
 ```
 
 `Scope` lists every file the implementer may touch — nothing else may change.
-Files that do not exist yet carry the literal suffix ` (new)`.
+Files that do not exist yet carry the literal suffix ` (new)`. When a task
+owns everything beneath a directory (mass deletion, a move), scope the
+directory with a trailing slash — `- angular-project/` — instead of listing
+every file.
 `Symbols` lists existing identifiers the task builds on (may be empty for
 greenfield files). `Steps` is a short imperative sequence.
 
