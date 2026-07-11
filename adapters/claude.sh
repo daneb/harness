@@ -19,6 +19,13 @@ mkdir -p "$td/report"
 
 readonly_tools="Read,Grep,Glob,LS,Bash(rg:*),Bash(ls:*),Bash(git diff:*),Bash(git status:*),Bash(git log:*)"
 
+# Cross-task context for the roles that set direction (planner, spec-critic):
+# the human's DIRECTION.md and the decision records of previously merged tasks.
+crosstask=""
+[ -f "$wd/DIRECTION.md" ] && crosstask=" The repo's direction and sequencing intent is DIRECTION.md — read it and stay within it."
+[ -n "$(find "$wd/decisions" -name '*.md' -print -quit 2>/dev/null)" ] \
+  && crosstask="$crosstask Decision records of previously merged tasks are in decisions/ — respect settled decisions instead of reopening them."
+
 # Runs claude with $prompt/$sys, saves the stream transcript, emits the usage
 # event, prints the agent's final result text on stdout.
 run_role() {
@@ -42,7 +49,7 @@ the marker-delimited spec blocks; your stdout is saved verbatim."
     prompt="Critique the draft specification at $rel/SPEC.md before human \
 approval. Survey this repository to check the spec against reality. Print ONLY \
 the critique in your role's format, ending with an ASSESSMENT line — your \
-stdout is saved verbatim as $rel/report/spec-review.md."
+stdout is saved verbatim as $rel/report/spec-review.md.$crosstask"
     [ -f "$td/report/spec-review.prev.md" ] && prompt="$prompt This is a \
 re-critique: your prior critique is at $rel/report/spec-review.prev.md and the \
 human has revised the spec since — apply your role's re-critique rule."
@@ -53,7 +60,7 @@ human has revised the spec since — apply your role's re-critique rule."
     info "planner (fresh context, read-only) → PLAN.md"
     prompt="Read $rel/SPEC.md, survey this repository, and produce the PLAN.md \
 content for this task. Print ONLY the plan markdown in the exact format your \
-role defines — your stdout is saved verbatim as $rel/PLAN.md."
+role defines — your stdout is saved verbatim as $rel/PLAN.md.$crosstask"
     run_role --allowedTools "$readonly_tools" > "$td/PLAN.md"
     info "wrote $td/PLAN.md"
     ;;

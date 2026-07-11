@@ -147,6 +147,35 @@ ok env PATH="$TESTTMP/bin:$PATH" KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TES
   "$A/kiro.sh" implementer "$PWD/.tasks/x" "$PWD"
 if grep -q "g3-feedback" "$TESTTMP/prompt.txt"; then fail "feedback pointer present without feedback"; else pass; fi
 
+t "planner prompt carries DIRECTION.md and decisions/ when they exist"
+mkrepo; mktask x
+echo "# direction" > DIRECTION.md
+mkdir -p decisions && echo "# past task" > decisions/2026-07-01-old.md
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+printf '%s' "$5" > "$KCAP"
+printf '# PLAN — x\n\n## Task: x\nScope:\n- src/app.sh\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+ok env PATH="$TESTTMP/bin:$PATH" KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+filehas "$TESTTMP/prompt.txt" "DIRECTION.md"
+filehas "$TESTTMP/prompt.txt" "decisions/"
+
+t "planner prompt omits cross-task pointers when neither exists"
+mkrepo; mktask x
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+printf '%s' "$5" > "$KCAP"
+printf '# PLAN — x\n\n## Task: x\nScope:\n- src/app.sh\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+ok env PATH="$TESTTMP/bin:$PATH" KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
+if grep -q "DIRECTION.md" "$TESTTMP/prompt.txt"; then fail "DIRECTION pointer without the file"; else pass; fi
+
 t "plan_list parses scopes, symbols, and (new) markers"
 mkrepo; mktask x
 edit .tasks/x/PLAN.md "- src/app.sh" "- src/app.sh

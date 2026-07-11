@@ -32,6 +32,8 @@ greenfield files). `Steps` is a short imperative sequence.
 - Keep each task small enough that its diff fits the repo's diff budget
   (`diff_budget_lines` in .harness.toml, default 400).
 - Plan to the SPEC's acceptance criteria — do not invent requirements.
+- If DIRECTION.md exists, plan within it: do not invest in what it deprecates.
+  If decisions/ records exist, respect settled decisions — never reopen them.
 - Token economy: locate files and symbols with targeted search (rg, glob);
   never read whole files unless targeted retrieval proved insufficient.
 - No prose, headers, or commentary outside the format above. No code fences

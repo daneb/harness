@@ -94,8 +94,9 @@ case "$cmd" in
     mkdir -p "$root/.tasks" "$root/decisions"
     [ -f "$root/AGENTS.md" ]     || cp "$HARNESS_HOME/templates/AGENTS.md" "$root/AGENTS.md"
     [ -e "$root/CLAUDE.md" ]     || ln -s AGENTS.md "$root/CLAUDE.md"   # one canonical file, no drift
+    [ -f "$root/DIRECTION.md" ]  || cp "$HARNESS_HOME/templates/DIRECTION.md" "$root/DIRECTION.md"
     [ -f "$root/.harness.toml" ] || cp "$HARNESS_HOME/templates/harness.toml" "$root/.harness.toml"
-    info "initialized $root (.tasks/, decisions/, AGENTS.md + CLAUDE.md symlink, .harness.toml)"
+    info "initialized $root (.tasks/, decisions/, AGENTS.md + CLAUDE.md symlink, DIRECTION.md, .harness.toml)"
     info "commit this scaffolding before starting tasks — untracked files fail G2's scope check"
     ;;
   spec)

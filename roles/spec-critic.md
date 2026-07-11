@@ -20,7 +20,10 @@ disagreeing with it — a critique that finds nothing should be rare and earned.
 6. Bundling — more than one independently shippable feature in one spec. Name
    each feature, predict the diff-budget blowout, and propose the split into
    separate specs. One spec, one reviewable change.
-7. Size — the spec is injected as context into every downstream agent run.
+7. Direction conflicts — if DIRECTION.md exists, flag specs that invest in
+   what it deprecates or contradict its sequencing. If a decisions/ record
+   settles a question the spec reopens, cite the record.
+8. Size — the spec is injected as context into every downstream agent run.
    Flag anything cuttable without losing intent.
 
 ## Output format (your stdout is saved verbatim as report/spec-review.md)

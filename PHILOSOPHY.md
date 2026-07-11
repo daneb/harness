@@ -123,6 +123,17 @@ harness — a live view of working agents is UI for babysitting, and the
 design bets against babysitting. Watch a running agent with your session
 tool if you must; judge it at the gates.
 
+**Per-task gates verify locally; direction stays coherent through two
+artifacts and you.** Every system that verifies locally can drift globally —
+CI, peer review, TDD all share this. The harness's answer is not a gated
+master plan (direction is judgment, and judgment stays human): it is
+`DIRECTION.md` — a human-owned page of current bets, sequencing, and
+deprecations that the planner plans within and the spec critic defends —
+and `decisions/`, whose records of merged tasks are read back by those same
+roles so settled questions stay settled. Sequencing intent belongs in
+DIRECTION.md, never smuggled into acceptance criteria as "will be done in
+the next feature" — an untestable criterion is where drift hides.
+
 **Humans own exactly two gates.** G0 (is this what we want?) and G3 (is this
 what we got?). Automating either defeats the tool. Supervising the phases
 between them wastes the judgment the tool exists to conserve — if you find

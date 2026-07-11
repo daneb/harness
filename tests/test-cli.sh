@@ -4,7 +4,7 @@
 t "init scaffolds layout with CLAUDE.md symlink"
 mkrepo
 ok harness init
-hasfile .tasks; hasfile decisions; hasfile AGENTS.md; hasfile .harness.toml
+hasfile .tasks; hasfile decisions; hasfile AGENTS.md; hasfile DIRECTION.md; hasfile .harness.toml
 if [ -L CLAUDE.md ]; then pass; else fail "CLAUDE.md is not a symlink"; fi
 
 t "spec scaffolds and refuses overwrite"
