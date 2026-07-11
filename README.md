@@ -116,7 +116,7 @@ fires).
 |---|---|---|
 | 1 | Layout, gates G0–G3, Claude adapter, single-task flow | ✅ built |
 | 2 | `ctx` tooling (map/sym/grep/doc) + steering rule | — |
-| 3 | Worktree + container isolation | — |
+| 3 | Worktree + container isolation | ✅ worktree per task (`<repo>-worktrees/<task>`, branch `task/<name>`); containers pending |
 | 4 | zmx fan-out, `zmx wait` join, G1 disjoint-scope (check already in G1) | — |
 | 5 | Second adapter + cross-model review | ✅ kiro.sh + `reviewer_model = "adapter/model"` (Copilot pending) |
 | 6 | Writeback to Obsidian vault (decisions/ writeback already in `merge`) | ✅ set `HARNESS_VAULT=/path/to/vault` |

@@ -204,10 +204,11 @@ don't touch → it's a prerequisite task: `git stash push -u` the feature, run
 the small task through its own full pipeline, **merge it before you pop**
 (merge commits with `git add -A`, so popped files in the tree get swept in),
 then resume. A false assumption baked into the spec itself → fix the spec,
-re-approve, re-plan. The stash dance exists because v1 shares one working
-tree — G2 sees every uncommitted change in the repo — and disappears when
-per-task worktrees land (build step 3). A prerequisite spec is allowed to be
-five lines; small units through the pipeline is the system working.
+re-approve, re-plan. Since worktrees landed (build step 3), `harness implement` gives each task
+its own sandbox checkout on a `task/<name>` branch — tasks no longer collide,
+your checkout stays untouched until merge, and the stash dance survives only
+for work you do by hand in the main tree. A prerequisite spec is allowed to
+be five lines; small units through the pipeline is the system working.
 If the reviewer is right, the task goes back to implement (fresh context,
 with the review as input). If the reviewer is wrong, note it — your G3
 decision is recorded, and `harness calibrate` turns your disagreements into

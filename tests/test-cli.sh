@@ -146,6 +146,43 @@ PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents"
 if [ "$RC" -ne 0 ]; then pass; else fail "split overwrote an existing task"; fi
 has "already exists"
 
+t "implement runs in a worktree; the user's checkout stays untouched"
+mkrepo; mktask y
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+echo "sandbox" >> src/app.sh
+printf 'implemented\n'
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness implement y
+if [ "$RC" -eq 0 ]; then pass; else fail "implement failed: $OUT"; fi
+wt="$TESTTMP/repo-worktrees/y"
+hasfile "$wt/src/app.sh"
+filehas "$wt/src/app.sh" "sandbox"                      # change landed in the sandbox
+if grep -q sandbox src/app.sh; then fail "user checkout was modified"; else pass; fi
+run git -C . status --porcelain -uno; if [ -z "$OUT" ]; then pass; else fail "root tree dirty: $OUT"; fi
+
+t "G2 in the worktree ignores dirt in the user's checkout"
+echo "user junk" > scratch.txt                           # dirt in root, NOT in scope
+ok harness gate g2 y                                     # scope check sees only the worktree
+rm scratch.txt
+
+t "merge integrates the task branch, cleans up, preserves root work"
+echo "wip" > my-wip.txt                                  # user's unrelated uncommitted work
+touch .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass
+echo "2026-07-11 by test" > .tasks/y/report/g3-approved
+printf '# R\n\nVERDICT: pass\n' > .tasks/y/report/review.md
+ok harness merge y
+filehas src/app.sh "sandbox"                             # task change arrived in root
+run git log -1 --format=%s; has "task(y)"
+run ls decisions; has "y.md"
+hasfile my-wip.txt                                       # user's wip survived
+if [ -d "$TESTTMP/repo-worktrees/y" ]; then fail "worktree not cleaned up"; else pass; fi
+run git branch --list "task/y"; if [ -z "$OUT" ]; then pass; else fail "task branch not deleted"; fi
+
 t "re-critique preserves the prior critique and points the agent at it"
 mkrepo; mktask y
 echo "old critique" > .tasks/y/report/spec-review.md

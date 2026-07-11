@@ -42,6 +42,11 @@ need_task() {
   td="$root/.tasks/$name"
 }
 
+# Worktree per task (build step 3): agents edit a disposable checkout on a
+# task/<name> branch; the user's checkout is untouched until merge.
+wt_path() { echo "$(dirname "$root")/$(basename "$root")-worktrees/$name"; }
+task_wd() { local w; w="$(wt_path)"; if [ -d "$w" ]; then echo "$w"; else echo "$root"; fi; }
+
 require_adapter() {
   [ -x "$adapter" ] || die "no such adapter: ${HARNESS_ADAPTER:-claude} — available: $(cd "$HARNESS_HOME/adapters" && for f in *.sh; do printf '%s ' "${f%.sh}"; done)"
 }
@@ -62,12 +67,13 @@ invalidate_from() {
 
 run_gate() {
   local g="$1" script
+  local gwd="$root"
   case "$g" in
     g0)   script="g0-spec.sh"   ;;
-    g1)   script="g1-plan.sh"   ;;
-    g2)   script="g2-diff.sh"   ;;
+    g1)   script="g1-plan.sh"   ; gwd="$(task_wd)" ;;
+    g2)   script="g2-diff.sh"   ; gwd="$(task_wd)" ;;
     g2.5) script="g25-review.sh";;
-    g3)   script="g3-human.sh"  ;;
+    g3)   script="g3-human.sh"  ; gwd="$(task_wd)" ;;
     *)    die "unknown gate: $g (g0|g1|g2|g2.5|g3)";;
   esac
   mkdir -p "$td/report"
@@ -75,9 +81,9 @@ run_gate() {
   local t0 ok=pass
   t0=$(date +%s)
   if [ "$g" = "g3" ]; then   # interactive: no log capture between human and diff
-    "$HARNESS_HOME/gates/$script" "$td" "$root" || ok=fail
+    "$HARNESS_HOME/gates/$script" "$td" "$gwd" || ok=fail
   else
-    "$HARNESS_HOME/gates/$script" "$td" "$root" 2>&1 \
+    "$HARNESS_HOME/gates/$script" "$td" "$gwd" 2>&1 \
       | tee "$td/report/$g.log" || ok=fail
   fi
   printf '{"ts":"%s","phase":"gate:%s","result":"%s","duration_s":%d}\n' \
@@ -159,7 +165,17 @@ case "$cmd" in
     require_adapter
     require_pass g0; require_pass g1
     invalidate_from g2
-    "$adapter" implementer "$td" "$root"
+    wt="$(wt_path)"
+    if [ ! -d "$wt" ]; then
+      mkdir -p "$(dirname "$wt")"
+      if git -C "$root" show-ref --quiet "refs/heads/task/$name"; then
+        git -C "$root" worktree add "$wt" "task/$name" >/dev/null 2>&1
+      else
+        git -C "$root" worktree add -b "task/$name" "$wt" >/dev/null 2>&1
+      fi
+      info "worktree: $wt (branch task/$name) — your checkout stays untouched"
+    fi
+    "$adapter" implementer "$td" "$wt"
     run_gate g2
     info "next: harness review $name"
     ;;
@@ -187,13 +203,14 @@ case "$cmd" in
     esac
     # The reviewer is read-only and diff-blind by permission; hand it the diff
     # as a file — evidence in files, not shell privileges.
+    twd="$(task_wd)"
     {
-      git -C "$root" diff HEAD
+      git -C "$twd" diff HEAD
       echo
       echo "# Untracked files (new; read their full content at these paths):"
-      git -C "$root" ls-files --others --exclude-standard | grep -vE '^(\.tasks/|decisions/)' || true
+      git -C "$twd" ls-files --others --exclude-standard | grep -vE '^(\.tasks/|decisions/)' || true
     } > "$td/report/diff.patch"
-    "$r_adapter" reviewer "$td" "$root"
+    "$r_adapter" reviewer "$td" "$twd"
     echo
     render "$td/report/review.md"    # shown before the gate: on a block, the review IS the news
     echo
@@ -210,12 +227,13 @@ case "$cmd" in
     need_task "${1:-}"
     for g in $GATES; do require_pass "$g"; done   # merge means EVERY gate passed
     [ -f "$td/report/g3-approved" ] || die "no human approval record"
-    rec="$root/decisions/$(date +%Y-%m-%d)-$name.md"
-    mkdir -p "$root/decisions"
+    twd="$(task_wd)"
+    rec="$twd/decisions/$(date +%Y-%m-%d)-$name.md"
+    mkdir -p "$twd/decisions"
     verdict=$(grep -iE '^VERDICT:' "$td/report/review.md" 2>/dev/null | tail -1 || echo "VERDICT: (no review)")
     cost=$(python3 -c "import json,sys; print(round(sum((json.loads(l).get('cost_usd') or 0) for l in open(sys.argv[1]) if l.strip()), 2))" \
            "$td/report/events.jsonl" 2>/dev/null || echo "n/a")
-    dstat=$(git -C "$root" diff HEAD --stat 2>/dev/null | tail -1 | sed 's/^ *//')
+    dstat=$(git -C "$twd" diff HEAD --stat 2>/dev/null | tail -1 | sed 's/^ *//')
     {
       echo "# Decision record — $name"
       echo
@@ -230,8 +248,25 @@ case "$cmd" in
       echo
       sed -n '/^## Problem/,$p' "$td/SPEC.md"
     } > "$rec"
-    git -C "$root" add -A
-    git -C "$root" commit -q -m "task($name): merge via harness — gates G0–G3 passed"
+    if [ "$twd" != "$root" ]; then
+      # Worktree flow: task metadata rides into history, commit on the task
+      # branch, merge into the user's branch, clean up the sandbox.
+      mkdir -p "$twd/.tasks"
+      cp -R "$td" "$twd/.tasks/"
+      git -C "$twd" add -A
+      git -C "$twd" commit -q -m "task($name): merge via harness — gates G0–G3 passed"
+      # The branch now carries .tasks/<name> (copied from root moments ago);
+      # the root's untracked copy would block the merge — the merge restores it tracked.
+      rm -rf "$td"
+      git -C "$root" merge -q --no-ff "task/$name" -m "task($name): merge via harness — gates G0–G3 passed" \
+        || die "merge conflict integrating task/$name — resolve in $root (worktree kept at $twd)"
+      git -C "$root" worktree remove "$twd" >/dev/null 2>&1 || true
+      git -C "$root" branch -q -d "task/$name" >/dev/null 2>&1 || true
+    else
+      git -C "$root" add -A
+      git -C "$root" commit -q -m "task($name): merge via harness — gates G0–G3 passed"
+    fi
+    rec="$root/decisions/$(basename "$rec")"
     info "merged $(git -C "$root" rev-parse --short HEAD); decision record: decisions/$(basename "$rec")"
     # Vault writeback (build step 6): automatic when HARNESS_VAULT points at a
     # directory (your Obsidian vault); the in-repo decisions/ stays canonical.
@@ -266,6 +301,7 @@ case "$cmd" in
     for g in $GATES; do
       if [ -f "$td/report/$g.pass" ]; then echo "  $g   ✓ pass"; else echo "  $g   · pending"; fi
     done
+    [ -d "$(wt_path)" ] && echo "  worktree: $(wt_path) (branch task/$name)"
     ;;
   calibrate)
     python3 "$HARNESS_HOME/lib/calibrate.py" "$(repo_root .)"

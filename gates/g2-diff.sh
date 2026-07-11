@@ -41,7 +41,10 @@ done
 
 # --- Diff budget: added+removed product lines (tracked) + new untracked files.
 # --- Test files are exempt — the cap must never reward skipping tests.
-budget=$(cfg "$root" diff_budget_lines 400)
+# Config reads from the metadata root ($td/../..): with worktrees, $root is the
+# task's sandbox and its checked-out .harness.toml may lag the real one.
+mroot="$(cd "$td/../.." && pwd)"
+budget=$(cfg "$mroot" diff_budget_lines 400)
 lines=0; tlines=0
 while read -r add del f; do
   [ -n "$f" ] || continue
