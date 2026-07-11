@@ -61,26 +61,8 @@ mroot="$(cd "$td/../.." && pwd)"
 budget=$(cfg "$mroot" diff_budget_lines 400)
 # Budget counts ADDED product lines: tests are exempt (never discourage
 # tests) and deletions are free (deletion is a first-class operation).
-lines=0; tlines=0; dlines=0
-while read -r add del f; do
-  [ -n "$f" ] || continue
-  case "$add" in ''|*[!0-9]*) continue ;; esac   # binary files report "-"
-  case "$f" in .tasks/*|decisions/*|.harness.toml) continue ;; esac  # harness metadata (tracked after merges)
-  [ -n "$(lockfile_manifest "$f")" ] && continue  # machine-generated, never counted
-  dlines=$((dlines + del))
-  if is_test_file "$f"; then tlines=$((tlines + add)); else lines=$((lines + add)); fi
-done <<EOF
-$(git -C "$root" diff HEAD --numstat)
-EOF
-while IFS= read -r f; do
-  [ -n "$f" ] || continue
-  case "$f" in .tasks/*|decisions/*|.harness.toml) continue;; esac
-  [ -f "$root/$f" ] || continue
-  [ -n "$(lockfile_manifest "$f")" ] && continue
-  if is_test_file "$f"; then tlines=$((tlines + $(wc -l < "$root/$f")))
-  else lines=$((lines + $(wc -l < "$root/$f"))); fi
-done <<EOF
-$(git -C "$root" ls-files --others --exclude-standard)
+read -r lines tlines dlines <<EOF
+$(diff_adds "$root")
 EOF
 [ "$lines" -le "$budget" ] || die "G2: diff adds $lines product lines (budget $budget; $tlines test lines exempt, $dlines deletions free).
 G2: One feature? Raise diff_budget_lines in .harness.toml, committed with a reason. Several? Split. (PHILOSOPHY.md, field guide)"

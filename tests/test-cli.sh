@@ -251,6 +251,13 @@ run harness loc
 has "product: "; has "tests:   10"; has "docs:"; has "total: "
 if printf '%s' "$OUT" | grep -q "1500"; then fail "self-budget shown outside the harness repo"; else pass; fi
 
+t "loc shows the pending change with G2's counting rules"
+mkrepo
+printf 'x\ny\nz\n' >> src/app.sh
+mkdir -p tests; printf 'a\n' > tests/new.test.sh
+run harness loc
+has "uncommitted: +3 product, +1 tests, -0 deleted"
+
 t "loc humanizes large counts"
 mkrepo
 python3 -c "open('src/big.sh','w').write('# x\n'*24388)"

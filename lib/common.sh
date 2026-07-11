@@ -112,6 +112,34 @@ lockfile_manifest() {
   case "$d" in .) echo "$m" ;; *) echo "$d/$m" ;; esac
 }
 
+# diff_adds <workdir> — "product_adds test_adds deletions" for the uncommitted
+# diff (tracked numstat + untracked file lines), excluding harness metadata
+# and lockfiles. The single source of change-counting: G2's budget and loc.
+diff_adds() {
+  local d="$1" p=0 t=0 del=0 a dl f n
+  while read -r a dl f; do
+    [ -n "$f" ] || continue
+    case "$a" in ''|*[!0-9]*) continue ;; esac
+    case "$f" in .tasks/*|decisions/*|.harness.toml) continue ;; esac
+    [ -n "$(lockfile_manifest "$f")" ] && continue
+    del=$((del + dl))
+    if is_test_file "$f"; then t=$((t + a)); else p=$((p + a)); fi
+  done <<EOF
+$(git -C "$d" diff HEAD --numstat 2>/dev/null)
+EOF
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    case "$f" in .tasks/*|decisions/*|.harness.toml) continue ;; esac
+    [ -f "$d/$f" ] || continue
+    [ -n "$(lockfile_manifest "$f")" ] && continue
+    n=$(wc -l < "$d/$f")
+    if is_test_file "$f"; then t=$((t + n)); else p=$((p + n)); fi
+  done <<EOF
+$(git -C "$d" ls-files --others --exclude-standard 2>/dev/null)
+EOF
+  echo "$p $t $del"
+}
+
 # is_test_file <repo-relative path> — heuristic shared by the G2 diff budget
 # (test lines are exempt: a size cap must never discourage tests) and any
 # future test-efficacy checks.

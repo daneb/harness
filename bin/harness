@@ -400,6 +400,12 @@ EOF
     echo "tests:   $(hn "$t")"
     echo "docs:    $(hn "$d") — *.md"
     echo "total:   $(hn "$((p + t + d))")"
+    read -r ap at ad <<EOF2
+$(diff_adds "$root")
+EOF2
+    if [ "$((ap + at + ad))" -gt 0 ]; then
+      echo "uncommitted: +$(fmt_n "$ap") product, +$(fmt_n "$at") tests, -$(fmt_n "$ad") deleted — what G2's budget will see"
+    fi
     if [ "$root" = "$HARNESS_HOME" ]; then
       b=$(cat "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
               "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | wc -l | tr -d ' ')
