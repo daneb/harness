@@ -294,8 +294,14 @@ case "$cmd" in
     ;;
   loc)
     wc -l "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
-          "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh
-    echo "budget: ~1500 lines total (see HARNESS-PLAN.md §9)"
+          "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | sed '$d'
+    p=$(cat "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
+            "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | wc -l | tr -d ' ')
+    t=$(cat "$HARNESS_HOME"/tests/*.sh | wc -l | tr -d ' ')
+    echo
+    echo "product: $p of ~1500 budget (HARNESS-PLAN.md §9)"
+    echo "tests:   $t (exempt — same rule as G2's diff budget)"
+    echo "total:   $((p + t))"
     ;;
   help|-h|--help) usage ;;
   *) echo "harness: unknown command '$cmd'" >&2; usage 1 ;;

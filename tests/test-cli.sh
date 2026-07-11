@@ -170,6 +170,10 @@ t "stats reports when no events exist"
 mkrepo
 no harness stats; has "no events"
 
+t "loc reports product, tests, and total"
+run harness loc
+has "product: "; has "tests: "; has "total: "; has "1500 budget"
+
 t "version prints version and commit"
 run harness version; has "harness 0.1.0"
 
