@@ -231,8 +231,17 @@ case "$cmd" in
     rec="$twd/decisions/$(date +%Y-%m-%d)-$name.md"
     mkdir -p "$twd/decisions"
     verdict=$(grep -iE '^VERDICT:' "$td/report/review.md" 2>/dev/null | tail -1 || echo "VERDICT: (no review)")
-    cost=$(python3 -c "import json,sys; print(round(sum((json.loads(l).get('cost_usd') or 0) for l in open(sys.argv[1]) if l.strip()), 2))" \
-           "$td/report/events.jsonl" 2>/dev/null || echo "n/a")
+    read -r cost agent_s <<EOF2
+$(python3 -c "
+import json, sys
+c = t = 0
+for l in open(sys.argv[1]):
+    if not l.strip(): continue
+    d = json.loads(l)
+    c += d.get('cost_usd') or 0
+    t += d.get('duration_ms') or 0
+print(round(c, 2), t // 1000)" "$td/report/events.jsonl" 2>/dev/null || echo "n/a n/a")
+EOF2
     dstat=$(git -C "$twd" diff HEAD --stat 2>/dev/null | tail -1 | sed 's/^ *//')
     {
       echo "# Decision record — $name"
@@ -243,6 +252,7 @@ case "$cmd" in
       echo "- Gates: $(cd "$td/report" && for f in *.pass; do [ -e "$f" ] && printf '%s ' "${f%.pass}"; done)"
       echo "- Diff: ${dstat:-n/a}"
       echo "- Agent cost: \$$cost"
+      echo "- Agent time: ${agent_s}s"
       echo
       echo "## Spec"
       echo
@@ -271,16 +281,28 @@ case "$cmd" in
     # Vault writeback (build step 6): automatic when HARNESS_VAULT points at a
     # directory (your Obsidian vault); the in-repo decisions/ stays canonical.
     if [ -n "${HARNESS_VAULT:-}" ] && [ -d "$HARNESS_VAULT" ]; then
-      vdir="$HARNESS_VAULT/harness/$(basename "$root")"
+      rname="$(basename "$root")"
+      vdir="$HARNESS_VAULT/harness/$rname"
       mkdir -p "$vdir"
+      # Hub note per repo + previous-record link: records cluster and chain
+      # in Obsidian's graph instead of floating unlinked.
+      [ -f "$vdir/$rname.md" ] || printf -- '---\ntags: [harness, repo-hub]\n---\n\n# %s — harness decision records\n' "$rname" > "$vdir/$rname.md"
+      prev=$(cd "$vdir" && for f in *.md; do
+               [ "$f" = "$rname.md" ] && continue
+               [ "$f" = "$(basename "$rec")" ] && continue
+               echo "${f%.md}"
+             done | sort | tail -1)
       {
         echo "---"
         echo "date: $(date +%Y-%m-%d)"
-        echo "repo: $(basename "$root")"
+        echo "repo: $rname"
         echo "task: $name"
         echo "commit: $(git -C "$root" rev-parse --short HEAD)"
         echo "tags: [harness, decision-record]"
         echo "---"
+        echo
+        if [ -n "$prev" ]; then echo "[[$rname]] · previous: [[$prev]]"
+        else echo "[[$rname]]"; fi
         echo
         cat "$rec"
       } > "$vdir/$(basename "$rec")"

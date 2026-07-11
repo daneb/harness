@@ -10,7 +10,6 @@ source "$(cd "$(dirname "$0")/.." && pwd)/lib/common.sh"
 
 role="${1:?usage: claude.sh <planner|implementer|reviewer> <task_dir> <workdir>}"
 td="${2:?}"; wd="${3:?}"
-name=$(basename "$td")
 sys="$HARNESS_HOME/roles/$role.md"
 [ -f "$sys" ] || die "unknown role: $role"
 command -v claude >/dev/null 2>&1 || die "claude CLI not found on PATH"

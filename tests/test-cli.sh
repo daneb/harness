@@ -106,6 +106,7 @@ ok harness merge y
 run git log -1 --format=%s; has "task(y)"
 run ls decisions; has "y.md"
 filehas decisions/*-y.md "VERDICT: pass"
+# shellcheck disable=SC2016  # literal \$ is grep-escaping, not expansion
 filehas decisions/*-y.md 'Agent cost: \$1.25'
 
 t "merge writes the record to HARNESS_VAULT when configured"
@@ -119,6 +120,17 @@ HARNESS_VAULT="$TESTTMP/vault" run harness merge y
 if [ "$RC" -eq 0 ]; then pass; else fail "merge with vault failed: $OUT"; fi
 filehas "$TESTTMP/vault/harness/repo/"*-y.md "tags: \[harness, decision-record\]"
 filehas "$TESTTMP/vault/harness/repo/"*-y.md "VERDICT: pass"
+filehas "$TESTTMP/vault/harness/repo/"*-y.md '\[\[repo\]\]'          # hub link
+hasfile "$TESTTMP/vault/harness/repo/repo.md"                        # hub note created
+# a second merged task chains to the previous record
+mktask z
+touch .tasks/z/report/g0.pass .tasks/z/report/g1.pass .tasks/z/report/g2.pass \
+      .tasks/z/report/g2.5.pass .tasks/z/report/g3.pass
+echo "2026-07-09 by test" > .tasks/z/report/g3-approved
+printf '# R\n\nVERDICT: pass\n' > .tasks/z/report/review.md
+HARNESS_VAULT="$TESTTMP/vault" run harness merge z
+if [ "$RC" -eq 0 ]; then pass; else fail "second merge failed: $OUT"; fi
+filehas "$TESTTMP/vault/harness/repo/"*-z.md 'previous: \[\['
 
 t "merge with a bogus vault path warns but still merges"
 mkrepo; mktask y
