@@ -124,6 +124,16 @@ is_test_file() {
   return 1
 }
 
+# fmt_n <count> — human-readable line counts: 24388 → 24.4k, 1234567 → 1.2M
+fmt_n() {
+  awk -v n="$1" 'BEGIN {
+    if (n >= 1000000)   { v = n / 1000000; s = "M" }
+    else if (n >= 1000) { v = n / 1000;    s = "k" }
+    else                { printf "%d", n; exit }
+    r = sprintf("%.1f", v); sub(/\.0$/, "", r); printf "%s%s", r, s
+  }'
+}
+
 # plan_tasks <plan_file> — list task slugs, one per line
 plan_tasks() { sed -nE 's/^## Task:[[:space:]]*(.*)/\1/p' "$1"; }
 

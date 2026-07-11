@@ -394,11 +394,12 @@ EOF2
     done <<EOF
 $(git -C "$root" ls-files)
 EOF
+    hn() { local h; h="$(fmt_n "$1")"; if [ "$h" = "$1" ]; then echo "$1"; else echo "$h ($1)"; fi; }
     echo "repo:    $root (tracked files; lockfiles excluded)"
-    echo "product: $p"
-    echo "tests:   $t"
-    echo "docs:    $d (*.md)"
-    echo "total:   $((p + t + d))"
+    echo "product: $(hn "$p")"
+    echo "tests:   $(hn "$t")"
+    echo "docs:    $(hn "$d") — *.md"
+    echo "total:   $(hn "$((p + t + d))")"
     if [ "$root" = "$HARNESS_HOME" ]; then
       b=$(cat "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
               "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | wc -l | tr -d ' ')
