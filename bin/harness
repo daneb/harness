@@ -40,6 +40,16 @@ need_task() {
   [ -n "$name" ] || die "usage: harness $cmd <task-name>"
   root="$(repo_root .)"
   td="$root/.tasks/$name"
+  # Merged tasks are history, not targets — gating one judges today's tree
+  # against a closed plan and produces nonsense violations.
+  case "$cmd" in
+    gate|implement|review|approve|merge|plan)
+      merged=$(git -C "$root" log --oneline -1 --grep "task($name): merge via harness" 2>/dev/null || true)
+      if [ -n "$merged" ]; then
+        info "WARNING: task '$name' was already merged ($merged) — did you mean another task?"
+      fi
+      ;;
+  esac
 }
 
 # Worktree per task (build step 3): agents edit a disposable checkout on a

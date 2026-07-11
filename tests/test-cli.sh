@@ -195,6 +195,16 @@ hasfile my-wip.txt                                       # user's wip survived
 if [ -d "$TESTTMP/repo-worktrees/y" ]; then fail "worktree not cleaned up"; else pass; fi
 run git branch --list "task/y"; if [ -z "$OUT" ]; then pass; else fail "task branch not deleted"; fi
 
+t "gating an already-merged task warns loudly"
+mkrepo; mktask y
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass .tasks/y/report/g2.pass \
+      .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass
+echo "2026-07-11 by test" > .tasks/y/report/g3-approved
+printf '# R\n\nVERDICT: pass\n' > .tasks/y/report/review.md
+ok harness merge y
+run harness gate g0 y
+has "WARNING: task 'y' was already merged"
+
 t "re-critique preserves the prior critique and points the agent at it"
 mkrepo; mktask y
 echo "old critique" > .tasks/y/report/spec-review.md
