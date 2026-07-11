@@ -160,8 +160,8 @@ EOF
 chmod +x "$TESTTMP/bin/kiro-cli"
 ok env PATH="$TESTTMP/bin:$PATH" KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
   "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
-filehas "$TESTTMP/prompt.txt" "DIRECTION.md"
-filehas "$TESTTMP/prompt.txt" "decisions/"
+filehas "$TESTTMP/prompt.txt" "sequencing intent is DIRECTION.md"
+filehas "$TESTTMP/prompt.txt" "previously merged tasks are in decisions/"
 
 t "planner prompt omits cross-task pointers when neither exists"
 mkrepo; mktask x
@@ -174,7 +174,7 @@ EOF
 chmod +x "$TESTTMP/bin/kiro-cli"
 ok env PATH="$TESTTMP/bin:$PATH" KCAP="$TESTTMP/prompt.txt" KIRO_AGENT_DIR="$TESTTMP/kagents" \
   "$A/kiro.sh" planner "$PWD/.tasks/x" "$PWD"
-if grep -q "DIRECTION.md" "$TESTTMP/prompt.txt"; then fail "DIRECTION pointer without the file"; else pass; fi
+if grep -q "sequencing intent is DIRECTION.md" "$TESTTMP/prompt.txt"; then fail "DIRECTION pointer without the file"; else pass; fi
 
 t "plan_list parses scopes, symbols, and (new) markers"
 mkrepo; mktask x
