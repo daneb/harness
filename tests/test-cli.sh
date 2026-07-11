@@ -180,7 +180,7 @@ has "product: "; has "tests:   10"; has "docs:"; has "total: "
 if printf '%s' "$OUT" | grep -q "1500"; then fail "self-budget shown outside the harness repo"; else pass; fi
 
 t "loc shows the self-budget inside the harness repo"
-cd "$HROOT"
+cd "$HROOT" || exit 1
 run harness loc
 has "budget:"; has "1500"
 
