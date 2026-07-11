@@ -170,9 +170,19 @@ t "stats reports when no events exist"
 mkrepo
 no harness stats; has "no events"
 
-t "loc reports product, tests, and total"
+t "loc reports the current repo, not the harness"
+mkrepo
+mkdir -p tests; python3 -c "open('tests/a.test.sh','w').write('# t\n'*10)"
+echo "# readme" > README.md
+git add -A; git commit -qm files
 run harness loc
-has "product: "; has "tests: "; has "total: "; has "1500 budget"
+has "product: "; has "tests:   10"; has "docs:"; has "total: "
+if printf '%s' "$OUT" | grep -q "1500"; then fail "self-budget shown outside the harness repo"; else pass; fi
+
+t "loc shows the self-budget inside the harness repo"
+cd "$HROOT"
+run harness loc
+has "budget:"; has "1500"
 
 t "version prints version and commit"
 run harness version; has "harness 0.1.0"

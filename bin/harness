@@ -24,7 +24,7 @@ harness — gated agent pipeline (gates, not virtue)
   harness stats               cost, duration, gate failure rates across tasks
   harness doctor              preflight: git, toolchain, adapter, dependencies
   harness version             version + commit
-  harness loc                 line count vs the ~1500-line budget
+  harness loc                 current repo's product/test/doc line counts
 
 Adapter: $HARNESS_ADAPTER (default "claude") selects adapters/<name>.sh
 EOF
@@ -293,15 +293,30 @@ case "$cmd" in
     echo "harness $v ($sha)"
     ;;
   loc)
-    wc -l "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
-          "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | sed '$d'
-    p=$(cat "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
-            "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | wc -l | tr -d ' ')
-    t=$(cat "$HARNESS_HOME"/tests/*.sh | wc -l | tr -d ' ')
-    echo
-    echo "product: $p of ~1500 budget (HARNESS-PLAN.md §9)"
-    echo "tests:   $t (exempt — same rule as G2's diff budget)"
-    echo "total:   $((p + t))"
+    root="$(repo_root .)"
+    p=0; t=0; d=0
+    while IFS= read -r f; do
+      [ -f "$root/$f" ] || continue
+      [ -n "$(lockfile_manifest "$f")" ] && continue
+      case "$f" in *.png|*.jpg|*.jpeg|*.gif|*.ico|*.pdf|*.woff|*.woff2|*.lockb) continue ;; esac
+      n=$(wc -l < "$root/$f")
+      case "$f" in
+        *.md) d=$((d + n)) ;;
+        *) if is_test_file "$f"; then t=$((t + n)); else p=$((p + n)); fi ;;
+      esac
+    done <<EOF
+$(git -C "$root" ls-files)
+EOF
+    echo "repo:    $root (tracked files; lockfiles excluded)"
+    echo "product: $p"
+    echo "tests:   $t"
+    echo "docs:    $d (*.md)"
+    echo "total:   $((p + t + d))"
+    if [ "$root" = "$HARNESS_HOME" ]; then
+      b=$(cat "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
+              "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | wc -l | tr -d ' ')
+    echo "budget:  $b of ~1500 (bin+lib+gates+adapters — HARNESS-PLAN.md §9)"
+    fi
     ;;
   help|-h|--help) usage ;;
   *) echo "harness: unknown command '$cmd'" >&2; usage 1 ;;
