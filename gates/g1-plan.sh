@@ -25,13 +25,16 @@ for t in $tasks; do
   if [ -z "$scope" ]; then
     echo "G1: task '$t' declares no Scope" >&2; fail=1; continue
   fi
-  # Every scoped file must exist unless marked "(new)".
+  # Every scoped file must exist unless marked "(new)". A path present in
+  # HEAD but deleted in the working tree is real, not hallucinated — plans
+  # for deletion tasks stay re-validatable mid-deletion.
   while IFS= read -r entry; do
     [ -n "$entry" ] || continue
     path="${entry%% *}"
     case "$entry" in *"(new)"*) continue;; esac
-    [ -e "$root/$path" ] \
-      || { echo "G1: task '$t' references missing file: $path (mark ' (new)' if intended)" >&2; fail=1; }
+    [ -e "$root/$path" ] && continue
+    git -C "$root" rev-parse -q --verify "HEAD:${path%/}" >/dev/null 2>&1 && continue
+    echo "G1: task '$t' references missing file: $path (mark ' (new)' if intended)" >&2; fail=1
   done <<EOF
 $scope
 EOF

@@ -31,6 +31,13 @@ t "G1 allows declared-new files"
 mkrepo; mktask x; edit .tasks/x/PLAN.md "- src/app.sh" "- src/new_thing.sh (new)"
 ok "$G/g1-plan.sh" "$PWD/.tasks/x" "$PWD"
 
+t "G1 accepts scope entries deleted in the tree but present in HEAD"
+mkrepo; mktask x
+mkdir -p legacy; echo a > legacy/a.txt; git add -A; git commit -qm legacy
+edit .tasks/x/PLAN.md "- src/app.sh" "- legacy/"
+rm -r legacy
+ok "$G/g1-plan.sh" "$PWD/.tasks/x" "$PWD"
+
 t "G1 refuses a hallucinated symbol"
 mkrepo; mktask x; edit .tasks/x/PLAN.md "- greet" "- greet
 - imaginary_fn"
