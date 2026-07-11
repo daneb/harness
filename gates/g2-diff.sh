@@ -23,8 +23,10 @@ if [ -z "$checks" ]; then
 fi
 
 # --- Scope check: changed files must be within the plan's declared scope. ---
-scope=$(plan_list "$plan" scope | awk '{print $1}')
-changed=$(git -C "$root" status --porcelain -uall | awk '{print $NF}' \
+scope=$(plan_list "$plan" scope | sed -e 's/ (new)$//')
+# Porcelain quotes paths containing spaces; renames show "old -> new".
+changed=$(git -C "$root" status --porcelain -uall \
+          | sed -e 's/^..[[:space:]]*//' -e 's/.* -> //' -e 's/^"//' -e 's/"$//' \
           | grep -vE '^(\.tasks/|decisions/|\.harness\.toml$)' || true)
 # in_scope <file>: exact entry match, or under a directory entry (trailing /)
 in_scope() {
@@ -41,7 +43,8 @@ SCOPE
 }
 
 fail=0; viols=""
-for f in $changed; do
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
   if in_scope "$f"; then continue; fi
   m=$(lockfile_manifest "$f")
   if [ -n "$m" ]; then
@@ -53,7 +56,9 @@ for f in $changed; do
 "
   fi
   fail=1
-done
+done <<EOF
+$changed
+EOF
 if [ "$fail" -ne 0 ]; then
   printf '%s' "$viols" | awk -F/ 'NF>1 { c[$1"/"]++; n++ } END {
     for (k in c) if (c[k] >= 10 && 2*c[k] >= n)

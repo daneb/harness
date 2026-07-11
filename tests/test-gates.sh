@@ -114,6 +114,15 @@ ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
 echo rogue > rogue.txt
 no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "rogue.txt"
 
+t "G2 handles filenames with spaces (quoted porcelain paths)"
+mkrepo; mktask x
+echo x > "My Notes.pdf"
+no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
+has "declared scope: My Notes.pdf"
+edit .tasks/x/PLAN.md "- src/app.sh" "- src/app.sh
+- My Notes.pdf"
+ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
+
 t "G2 summarizes violation floods sharing one directory"
 mkrepo; mktask x
 mkdir -p legacy

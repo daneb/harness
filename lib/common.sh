@@ -135,7 +135,7 @@ EOF
     n=$(wc -l < "$d/$f")
     if is_test_file "$f"; then t=$((t + n)); else p=$((p + n)); fi
   done <<EOF
-$(git -C "$d" ls-files --others --exclude-standard 2>/dev/null)
+$(git -C "$d" ls-files --others --exclude-standard 2>/dev/null | sed -e 's/^"//' -e 's/"$//')
 EOF
   echo "$p $t $del"
 }

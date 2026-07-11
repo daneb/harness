@@ -16,16 +16,19 @@ done
 
 [ -t 0 ] || die "G3: requires an interactive terminal — human review is never automated"
 
-untracked=$(git -C "$root" ls-files --others --exclude-standard | grep -vE '^(\.tasks/|decisions/)' || true)
+untracked=$(git -C "$root" ls-files --others --exclude-standard | sed -e 's/^"//' -e 's/"$//' | grep -vE '^(\.tasks/|decisions/)' || true)
 {
   echo "── Changed files ──────────────────────────────────────"
   git -C "$root" status --short
   echo "── Diff ───────────────────────────────────────────────"
   git -C "$root" diff HEAD --color=always
-  for f in $untracked; do
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
     printf '\n── New file: %s ──\n' "$f"
     sed 's/^/    /' "$root/$f"
-  done
+  done <<EOF
+$untracked
+EOF
 } | ${PAGER:-less -R}
 
 # Human decision is the ground-truth label for reviewer calibration.
