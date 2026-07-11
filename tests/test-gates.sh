@@ -114,6 +114,17 @@ ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
 echo rogue > rogue.txt
 no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "rogue.txt"
 
+t "G2 summarizes violation floods sharing one directory"
+mkrepo; mktask x
+mkdir -p legacy
+python3 -c "
+import os
+for i in range(12): open('legacy/f%d.txt' % i, 'w').write('x\n')
+"
+no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
+has "12 of 12 out-of-scope files sit under legacy/"
+has "task x"
+
 t "G2 budget: mass deletion is free, additions still counted"
 mkrepo; mktask x; printf 'diff_budget_lines = 3\n' > .harness.toml
 python3 -c "open('src/big.sh','w').write('# x\n'*500)"

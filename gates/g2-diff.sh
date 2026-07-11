@@ -12,6 +12,7 @@ plan="$td/PLAN.md"
 
 [ -f "$plan" ] || die "G2: $plan not found"
 git -C "$root" rev-parse HEAD >/dev/null 2>&1 || die "G2: repo has no commits to diff against"
+echo "G2: task '$(basename "$td")' — scope from its PLAN.md"
 
 # --- The repo's own quality bar (lib/common.sh). No default toolchain, ever. ---
 checks=$(discover_checks "$root" | awk '!seen[$0]++')
@@ -39,7 +40,7 @@ SCOPE
   return 1
 }
 
-fail=0
+fail=0; viols=""
 for f in $changed; do
   if in_scope "$f"; then continue; fi
   m=$(lockfile_manifest "$f")
@@ -48,10 +49,18 @@ for f in $changed; do
     echo "G2: lockfile $f changed but its manifest $m is not in scope (dependency drift?)" >&2
   else
     echo "G2: file changed outside declared scope: $f" >&2
+    viols="$viols$f
+"
   fi
   fail=1
 done
-[ "$fail" -eq 0 ] || die "G2: scope violation"
+if [ "$fail" -ne 0 ]; then
+  printf '%s' "$viols" | awk -F/ 'NF>1 { c[$1"/"]++; n++ } END {
+    for (k in c) if (c[k] >= 10 && 2*c[k] >= n)
+      printf "G2: %d of %d out-of-scope files sit under %s — if this task owns that directory, one entry covers them: - %s\n", c[k], n, k, k
+  }' >&2
+  die "G2: scope violation (task $(basename "$td") — is this the task that owns these changes?)"
+fi
 
 # --- Diff budget: added+removed product lines (tracked) + new untracked files.
 # --- Test files are exempt — the cap must never reward skipping tests.
