@@ -1,0 +1,11 @@
+G2: task 'fanout' — scope from its PLAN.md
+G2: diff 109/400 added product lines (81 test lines exempt, 18 deleted free), all changes in scope
+==> G2: commands below are discovered from this repo's own manifests — to change one, change the script it names (specs instruct agents; manifests instruct gates)
+==> G2 check: make lint
+shellcheck bin/harness lib/common.sh gates/*.sh adapters/*.sh tests/*.sh
+python3 -m py_compile lib/*.py
+==> G2 check: make test
+bash tests/run.sh
+
+harness tests: 240 assertions, 0 failed
+G2: all repo checks passed

@@ -205,6 +205,86 @@ ok harness merge y
 run harness gate g0 y
 has "WARNING: task 'y' was already merged"
 
+# stub that implements per-subtask: creates the file its named task owns
+mkstub_fanout() {
+  mkdir -p "$TESTTMP/bin"
+  cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+p="$5"
+case "$p" in
+  *"ONLY the task '## Task: alpha'"*) echo "alpha was here" > src/alpha.txt ;;
+  *"ONLY the task '## Task: beta'"*)  echo "beta was here"  > src/beta.txt ;;
+  *) echo "NO SUBTASK NAMED" >&2; exit 1 ;;
+esac
+echo done
+EOF
+  chmod +x "$TESTTMP/bin/kiro-cli"
+}
+
+mkfanplan() {  # two disjoint subtasks
+  cat > .tasks/y/PLAN.md <<'EOF'
+# PLAN — y
+
+## Task: alpha
+Scope:
+- src/alpha.txt (new)
+Symbols:
+- greet
+Steps:
+- do alpha
+
+## Task: beta
+Scope:
+- src/beta.txt (new)
+Symbols:
+- greet
+Steps:
+- do beta
+EOF
+}
+
+t "fan-out: parallel subtasks combine into the feature worktree"
+mkrepo; mktask y; mkfanplan; mkstub_fanout
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness implement y
+if [ "$RC" -eq 0 ]; then pass; else fail "fan-out implement failed: $OUT"; fi
+has "fan-out joined"
+wt="$TESTTMP/repo-worktrees/y"
+filehas "$wt/src/alpha.txt" "alpha was here"
+filehas "$wt/src/beta.txt" "beta was here"
+run git -C "$wt" status --porcelain; has "src/alpha.txt"   # combined AND uncommitted
+if [ -d "$TESTTMP/repo-worktrees/y--alpha" ]; then fail "subtask worktree not cleaned"; else pass; fi
+if [ -e src/alpha.txt ]; then fail "user checkout touched"; else pass; fi
+hasfile .tasks/y/report/implement-alpha.out
+
+t "fan-out: a failing subtask names itself and keeps its worktree"
+mkrepo; mktask y; mkfanplan
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+case "$5" in
+  *"'## Task: alpha'"*) echo "alpha ok" > src/alpha.txt; echo done ;;
+  *) echo "beta exploded" >&2; exit 1 ;;
+esac
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness implement y
+if [ "$RC" -ne 0 ]; then pass; else fail "failing subtask did not fail the phase"; fi
+has "failed: beta"
+hasfile "$TESTTMP/repo-worktrees/y--beta"   # kept for inspection
+
+t "fan-out: cap=1 runs subtasks sequentially and still combines"
+mkrepo; mktask y; mkfanplan; mkstub_fanout
+printf 'fanout_cap = 1\n' > .harness.toml
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness implement y
+if [ "$RC" -eq 0 ]; then pass; else fail "cap=1 fan-out failed: $OUT"; fi
+filehas "$TESTTMP/repo-worktrees/y/src/beta.txt" "beta was here"
+
 t "re-critique preserves the prior critique and points the agent at it"
 mkrepo; mktask y
 echo "old critique" > .tasks/y/report/spec-review.md
@@ -281,7 +361,7 @@ run harness loc
 has "budget:"; has "1500"
 
 t "version prints version and commit"
-run harness version; has "harness 0.1.0"
+run harness version; has "harness $(cat "$HROOT/VERSION")"
 
 t "doctor passes on a healthy kiro setup"
 mkrepo; mkstub_kiro

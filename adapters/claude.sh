@@ -26,8 +26,10 @@ crosstask=""
 
 # Runs claude with $prompt/$sys, saves the stream transcript, emits the usage
 # event, prints the agent's final result text on stdout.
+sub="${HARNESS_SUBTASK:-}"   # fan-out: which task of a multi-task plan
+
 run_role() {
-  local tsf="$td/report/$role-transcript.jsonl"
+  local tsf="$td/report/$role${sub:+-$sub}-transcript.jsonl"
   (cd "$wd" && claude -p "$prompt" \
       --append-system-prompt "$(cat "$sys")" \
       --output-format stream-json --verbose "$@") > "$tsf"
@@ -71,7 +73,10 @@ lint/tests before finishing. Leave all changes uncommitted."
 rejected by the human reviewer; read $td/report/g3-feedback.md and address it."
     [ -f "$td/report/review.md" ] && prompt="$prompt Prior reviewer findings are \
 in $td/report/review.md."
-    run_role --permission-mode acceptEdits | tee "$td/report/implement.log"
+    [ -n "$sub" ] && prompt="$prompt You are implementing ONLY the task \
+'## Task: $sub' from $td/PLAN.md. Sibling tasks run in parallel elsewhere — \
+never touch files outside task '$sub'-s declared Scope."
+    run_role --permission-mode acceptEdits | tee "$td/report/implement${sub:+-$sub}.log"
     ;;
   reviewer)
     model="${HARNESS_REVIEWER_MODEL:-}"   # set by bin/harness from reviewer_model config

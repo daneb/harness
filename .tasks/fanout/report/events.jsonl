@@ -1,0 +1,4 @@
+{"ts":"2026-07-12T19:12:57","phase":"gate:g0","result":"pass","duration_s":0}
+{"ts":"2026-07-12T19:12:57","phase":"gate:g1","result":"pass","duration_s":0}
+{"ts":"2026-07-12T19:13:13","phase":"gate:g2","result":"fail","duration_s":16}
+{"ts":"2026-07-12T19:14:08","phase":"gate:g2","result":"pass","duration_s":16}

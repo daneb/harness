@@ -57,6 +57,63 @@ need_task() {
 wt_path() { echo "$(dirname "$root")/$(basename "$root")-worktrees/$name"; }
 task_wd() { local w; w="$(wt_path)"; if [ -d "$w" ]; then echo "$w"; else echo "$root"; fi; }
 
+# ensure_wt <path> <branch> [base] — create (or reuse) a worktree
+ensure_wt() {
+  [ -d "$1" ] && return 0
+  mkdir -p "$(dirname "$1")"
+  if git -C "$root" show-ref --quiet "refs/heads/$2"; then
+    git -C "$root" worktree add "$1" "$2" >/dev/null 2>&1
+  else
+    git -C "$root" worktree add -b "$2" "$1" "${3:-HEAD}" >/dev/null 2>&1
+  fi
+}
+
+# fan_out <feature-worktree> — parallel implementers for a multi-task plan;
+# join, combine into the feature worktree as uncommitted changes.
+fan_out() {
+  local wt="$1" cap base subs s swt i running failed=""
+  cap=$(cfg "$root" fanout_cap 2)
+  base=$(git -C "$wt" rev-parse HEAD)
+  subs=$(plan_tasks "$td/PLAN.md")
+  info "fan-out: $(echo "$subs" | wc -l | tr -d ' ') tasks, cap $cap (G1 verified disjoint scopes)"
+  running=0
+  reap() {
+    i=0
+    while [ "$i" -lt "$running" ]; do
+      local p ss
+      eval "p=\$pid_$i"; eval "ss=\$sub_$i"
+      wait "$p" || failed="$failed $ss"
+      i=$((i + 1))
+    done
+    running=0
+  }
+  for s in $subs; do
+    swt="$(dirname "$root")/$(basename "$root")-worktrees/$name--$s"
+    ensure_wt "$swt" "task/$name--$s" "$base"
+    info "  ↳ $s → $swt"
+    HARNESS_SUBTASK="$s" "$adapter" implementer "$td" "$swt" \
+      > "$td/report/implement-$s.out" 2>&1 &
+    eval "pid_$running=$!"; eval "sub_$running=$s"
+    running=$((running + 1))
+    [ "$running" -ge "$cap" ] && reap
+  done
+  reap
+  [ -z "$failed" ] || die "fan-out: subtask(s) failed:$failed — see .tasks/$name/report/implement-<task>.out (worktrees kept)"
+  # Combine: commit each subtask branch, merge into the feature, then reset
+  # so the whole set is uncommitted — the rest of the pipeline is unchanged.
+  for s in $subs; do
+    swt="$(dirname "$root")/$(basename "$root")-worktrees/$name--$s"
+    git -C "$swt" add -A
+    git -C "$swt" commit -q -m "wip($name--$s)" --allow-empty
+    git -C "$wt" merge -q "task/$name--$s" -m "join $s" \
+      || die "fan-out: merge conflict joining '$s' — scopes overlapped in practice; worktree kept at $swt"
+    git -C "$root" worktree remove "$swt" >/dev/null 2>&1 || true
+    git -C "$root" branch -q -D "task/$name--$s" >/dev/null 2>&1 || true
+  done
+  git -C "$wt" reset -q --mixed "$base"
+  info "fan-out joined: combined changes uncommitted in $wt"
+}
+
 require_adapter() {
   [ -x "$adapter" ] || die "no such adapter: ${HARNESS_ADAPTER:-claude} — available: $(cd "$HARNESS_HOME/adapters" && for f in *.sh; do printf '%s ' "${f%.sh}"; done)"
 }
@@ -177,15 +234,14 @@ case "$cmd" in
     invalidate_from g2
     wt="$(wt_path)"
     if [ ! -d "$wt" ]; then
-      mkdir -p "$(dirname "$wt")"
-      if git -C "$root" show-ref --quiet "refs/heads/task/$name"; then
-        git -C "$root" worktree add "$wt" "task/$name" >/dev/null 2>&1
-      else
-        git -C "$root" worktree add -b "task/$name" "$wt" >/dev/null 2>&1
-      fi
+      ensure_wt "$wt" "task/$name"
       info "worktree: $wt (branch task/$name) — your checkout stays untouched"
     fi
-    "$adapter" implementer "$td" "$wt"
+    if [ "$(plan_tasks "$td/PLAN.md" | wc -l | tr -d ' ')" -gt 1 ]; then
+      fan_out "$wt"
+    else
+      "$adapter" implementer "$td" "$wt"
+    fi
     run_gate g2
     info "next: harness review $name"
     ;;

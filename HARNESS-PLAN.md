@@ -208,6 +208,32 @@ Start with shell/just scripts. Promote hot paths to a small Rust or TypeScript b
 
 ---
 
+## 9.5 Remaining roadmap (written 2026-07-12; ordered)
+
+1. **Step 4 — fan-out** *(in progress, dogfooded through the harness itself)*:
+   parallel implementers on multi-task plans, one worktree per subtask,
+   portable `&`+`wait` join, `fanout_cap` respected; subtask branches combine
+   into the feature worktree as uncommitted changes so G2→merge run unchanged.
+   zmx session integration is a follow-up nicety, not a dependency.
+2. **Core consolidation** *(trigger fired at 1,200)*: plan parsing (awk), the
+   TOML reader (sed), verdict parsing, and the scattered Python converge into
+   the Python core, shell shrinks to glue. Woven through, one slice per task
+   (diff_adds was the first).
+3. **Step 2 — `ctx` tooling** + the token-economy A/B: measure cost per task
+   from events.jsonl before/after ctx lands — success criterion 3 becomes a
+   number, not a claim.
+4. **Containers** (step 3's second half): throwaway container per worktree.
+   Kiro's regex command allowlists are containment, not confinement.
+5. **Small debts**: TDD red-proof in G2 (build or strike); stats re-run signal
+   ("task ran G2 six times") and 30–90-day turnover ratio from decision
+   records; `harness abandon <task>` for orphaned worktrees; exercise true
+   cross-model review when claude credit exists (calibrate becomes a model
+   comparison).
+6. **The two non-code criteria**: harness development flows through the
+   harness (started with this roadmap's own task), and the second-engineer
+   handoff test — PHILOSOPHY.md plus the repo, one colleague, watch where
+   they stall.
+
 ## 10. Open decisions
 
 - [x] Name (2026-07-08): `harness`

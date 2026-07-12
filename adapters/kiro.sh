@@ -78,17 +78,19 @@ done
 # prompt (as well as living in the agent config) — Kiro has no equivalent of
 # --append-system-prompt, and the config's file:// prompt alone proved too weak
 # to hold the output-format contract.
+sub="${HARNESS_SUBTASK:-}"   # fan-out: which task of a multi-task plan
+
 run_kiro() {
-  local tsf="$td/report/$role-transcript.kiro.txt" t0 mjson esc full_prompt
+  local tsf="$td/report/$role${sub:+-$sub}-transcript.kiro.txt" t0 mjson esc full_prompt
   full_prompt="$(printf 'YOUR ROLE AND OUTPUT CONTRACT — follow exactly:\n\n%s\n\n---\n\nYour shell already runs at the repository root. Never prefix commands with cd — the command allowlist matches from the first word.\n\nTASK:\n%s' "$(cat "$sys")" "$prompt")"
   t0=$(date +%s)
   (cd "$wd" && "$KIRO_BIN" chat --no-interactive --agent "$agent" "$full_prompt") \
-    > "$tsf" 2> "$td/report/$role-kiro.err" \
-    || die "kiro run failed — see $rel/report/$role-kiro.err"
+    > "$tsf" 2> "$td/report/$role${sub:+-$sub}-kiro.err" \
+    || die "kiro run failed — see $rel/report/$role${sub:+-$sub}-kiro.err"
   # THIS run's config failing to load means a silent fallback to default
   # permissions — refuse the output. Other agents' config errors are noise.
-  if grep -qiE "$agent\.json is invalid|no agent with name $agent|falling back" "$td/report/$role-kiro.err"; then
-    die "kiro did not load the $agent config — role permissions were NOT applied. See $rel/report/$role-kiro.err"
+  if grep -qiE "$agent\.json is invalid|no agent with name $agent|falling back" "$td/report/$role${sub:+-$sub}-kiro.err"; then
+    die "kiro did not load the $agent config — role permissions were NOT applied. See $rel/report/$role${sub:+-$sub}-kiro.err"
   fi
   mjson="null"; [ -n "$model" ] && mjson="\"$model\""
   printf '{"ts":"%s","phase":"%s","adapter":"kiro","model":%s,"cost_usd":null,"duration_ms":%d}\n' \
@@ -135,7 +137,10 @@ lint/tests before finishing. Leave all changes uncommitted."
 rejected by the human reviewer; read $td/report/g3-feedback.md and address it."
     [ -f "$td/report/review.md" ] && prompt="$prompt Prior reviewer findings are \
 in $td/report/review.md."
-    run_kiro | tee "$td/report/implement.log"
+    [ -n "$sub" ] && prompt="$prompt You are implementing ONLY the task \
+'## Task: $sub' from $td/PLAN.md. Sibling tasks run in parallel elsewhere — \
+never touch files outside task '$sub'-s declared Scope."
+    run_kiro | tee "$td/report/implement${sub:+-$sub}.log"
     ;;
   reviewer)
     info "reviewer (kiro, fresh context, read-only${model:+, model=$model}) → report/review.md"
