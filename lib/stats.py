@@ -17,6 +17,7 @@ gate_runs = {}            # gate -> [runs, fails]
 for ev in sorted(glob.glob(os.path.join(root, ".tasks", "*", "report", "events.jsonl"))):
     task = ev.split(os.sep)[-3]
     cost = 0.0
+    credits = 0.0
     agent_ms = 0
     runs = 0
     fails = {}
@@ -35,9 +36,10 @@ for ev in sorted(glob.glob(os.path.join(root, ".tasks", "*", "report", "events.j
                 fails[g] = fails.get(g, 0) + 1
         elif phase in ("planner", "implementer", "reviewer", "spec-critic", "spec-splitter"):
             cost += d.get("cost_usd") or 0
+            credits += d.get("credits") or 0
             agent_ms += d.get("duration_ms") or 0
     detail = " ".join("%s:%d" % (g, n) for g, n in sorted(fails.items()))
-    rows.append((task, cost, agent_ms, runs, sum(fails.values()), detail))
+    rows.append((task, cost, credits, agent_ms, runs, sum(fails.values()), detail))
 
 if not rows:
     sys.exit("stats: no events yet — run tasks through the pipeline first")
@@ -46,14 +48,16 @@ def dur(ms):
     s = ms // 1000
     return "%dm%02ds" % (s // 60, s % 60) if s >= 60 else "%ds" % s
 
-print("%-28s %8s %10s %10s  %s" % ("task", "cost$", "agent", "gate runs", "gate fails"))
-for task, cost, ms, runs, nf, detail in rows:
-    print("%-28s %8.2f %10s %10d  %s" % (task, cost, dur(ms), runs, detail or "-"))
+print("%-28s %7s %8s %9s %10s  %s" % ("task", "cost$", "credits", "agent", "gate runs", "gate fails"))
+for task, cost, credits, ms, runs, nf, detail in rows:
+    print("%-28s %7.2f %8.2f %9s %10d  %s" % (task, cost, credits, dur(ms), runs, detail or "-"))
 
 total_cost = sum(r[1] for r in rows)
-total_ms = sum(r[2] for r in rows)
+total_credits = sum(r[2] for r in rows)
+total_ms = sum(r[3] for r in rows)
 print()
-print("%d task(s), $%.2f agent spend, %s agent time" % (len(rows), total_cost, dur(total_ms)))
+print("%d task(s), $%.2f + %.2f credits agent spend, %s agent time"
+      % (len(rows), total_cost, total_credits, dur(total_ms)))
 parts = []
 for g in sorted(gate_runs):
     r, f = gate_runs[g]

@@ -219,9 +219,14 @@ Start with shell/just scripts. Promote hot paths to a small Rust or TypeScript b
    TOML reader (sed), verdict parsing, and the scattered Python converge into
    the Python core, shell shrinks to glue. Woven through, one slice per task
    (diff_adds was the first).
-3. **Step 2 — `ctx` tooling** + the token-economy A/B: measure cost per task
-   from events.jsonl before/after ctx lands — success criterion 3 becomes a
-   number, not a claim.
+3. **Step 2 — `ctx` tooling: MEASURE FIRST, then build or retire.** The plan
+   predates 2026 agent CLIs, whose transcripts already show ranged reads and
+   grep-first retrieval — ctx's steering half may be ambient behavior now.
+   Decision gate: gather 1–2 weeks of per-task credits/duration (kiro credits
+   now parsed into events.jsonl) and inspect transcripts for whole-file-read
+   waste on large files. Waste found → build ctx minimal (map + sym only).
+   None found → strike step 2 as satisfied-by-ecosystem, record it in §10,
+   and success criterion 3 is answered by the baseline itself.
 4. **Containers** (step 3's second half): throwaway container per worktree.
    Kiro's regex command allowlists are containment, not confinement.
 5. **Small debts**: TDD red-proof in G2 (build or strike); stats re-run signal

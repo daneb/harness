@@ -93,6 +93,7 @@ case "$p" in
     printf '=== SPEC: split-two ===\n# SPEC — split-two\n\nStatus: draft\n\n## Problem\np2\n\n## Acceptance Criteria\n- [ ] b\n' ;;
   *)                                  printf '\033[1m# PLAN — x\033[0m\n\n## Task: x\nScope:\n- src/app.sh\n' ;;
 esac
+printf ' \342\226\270 Credits: 1.25 \342\200\242 Time: 4m 5s\n' >&2
 EOF
   chmod +x "$TESTTMP/bin/kiro-cli"
 }

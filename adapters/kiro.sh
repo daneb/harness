@@ -93,8 +93,11 @@ run_kiro() {
     die "kiro did not load the $agent config — role permissions were NOT applied. See $rel/report/$role${sub:+-$sub}-kiro.err"
   fi
   mjson="null"; [ -n "$model" ] && mjson="\"$model\""
-  printf '{"ts":"%s","phase":"%s","adapter":"kiro","model":%s,"cost_usd":null,"duration_ms":%d}\n' \
-    "$(date +%Y-%m-%dT%H:%M:%S)" "$role" "$mjson" "$(( ($(date +%s) - t0) * 1000 ))" \
+  # kiro prints "Credits: N.NN" in its output — the closest thing to cost it exposes
+  credits=$(grep -ohE 'Credits: [0-9.]+' "$tsf" "$td/report/$role${sub:+-$sub}-kiro.err" 2>/dev/null \
+            | tail -1 | awk '{print $2}' || true)
+  printf '{"ts":"%s","phase":"%s","adapter":"kiro","model":%s,"cost_usd":null,"credits":%s,"duration_ms":%d}\n' \
+    "$(date +%Y-%m-%dT%H:%M:%S)" "$role" "$mjson" "${credits:-null}" "$(( ($(date +%s) - t0) * 1000 ))" \
     >> "$td/report/events.jsonl"
   esc=$(printf '\033')
   sed "s/${esc}\[[0-9;]*[a-zA-Z]//g" "$tsf"

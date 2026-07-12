@@ -321,12 +321,12 @@ mkdir -p .tasks/s1/report
 cat > .tasks/s1/report/events.jsonl <<'EOF'
 {"ts":"2026-07-09T10:00:00","phase":"planner","model":"m","cost_usd":0.25,"duration_ms":60000}
 {"ts":"2026-07-09T10:01:00","phase":"gate:g1","result":"pass","duration_s":1}
-{"ts":"2026-07-09T10:02:00","phase":"implementer","model":"m","cost_usd":1.75,"duration_ms":120000}
+{"ts":"2026-07-09T10:02:00","phase":"implementer","model":"m","cost_usd":1.75,"credits":3.5,"duration_ms":120000}
 {"ts":"2026-07-09T10:03:00","phase":"gate:g2","result":"fail","duration_s":3}
 {"ts":"2026-07-09T10:04:00","phase":"gate:g2","result":"pass","duration_s":3}
 EOF
 run harness stats
-has "s1"; has "2.00"; has "3m00s"; has "g2:1"; has "g2 1/2"
+has "s1"; has "2.00"; has "3.50"; has "3m00s"; has "g2:1"; has "g2 1/2"
 
 t "stats reports when no events exist"
 mkrepo
