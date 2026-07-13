@@ -23,3 +23,7 @@ You implement exactly one planned task inside its declared file scope.
 - If the plan is wrong or the scope is insufficient to satisfy the spec, STOP
   and report the mismatch clearly instead of working around it. The plan gets
   fixed and re-gated; it does not get bypassed.
+- When the spec says delete or remove, DELETE the files (rm / git rm). Never
+  substitute a workaround — gutting a file to a one-line stub is not deletion,
+  it leaves dead code and a lie in the tree. If a command you need is refused,
+  STOP and report it; do not route around the limit and declare success.

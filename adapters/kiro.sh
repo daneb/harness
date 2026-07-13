@@ -54,11 +54,16 @@ ro_shell = ["rg .*", "ls .*", "find .*", "wc .*", "cat .*",
 if role == "implementer":
     cfg["allowedTools"] = ["read", "write"]
     cfg["toolsSettings"] = {"shell": {
+        # File mutation (rm/mv/mkdir/git rm) so deletion tasks are real
+        # deletions, not gutted stubs — deletion is a first-class operation.
+        # Scoped to the worktree; commit/push/merge stay denied (merges flow
+        # through the gate layer, never the agent).
         "allowedCommands": ro_shell + [
+            "rm .*", "mv .*", "mkdir .*", "touch .*", "git rm .*", "git mv .*",
             "npm .*", "npx .*", "yarn .*", "pnpm .*", "node .*", "vitest .*",
             "jest .*", "make .*", "just .*", "go .*", "cargo .*",
             "pytest .*", "python .*", "python3 .*", "ruff .*", "mypy .*", "tsc .*"],
-        "deniedCommands": ["git commit.*", "git push.*", "git merge.*"],
+        "deniedCommands": ["git commit.*", "git push.*", "git merge.*", "rm .*-rf /.*", "rm .*-rf ~.*"],
         "autoAllowReadonly": True,
     }}
 else:  # planner, reviewer, spec roles: read-only inspection commands only
