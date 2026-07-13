@@ -252,7 +252,14 @@ stops jarring you because you routed around it has already failed.
 - **Not an interactive assistant.** For exploration, debugging, and
   conversational iteration, use Claude Code or Kiro directly — the harness
   adds only ceremony there. It earns its keep on *delegated* work you judge
-  at two points.
+  at two points. The handoff from a brainstorm chat into the pipeline is
+  you writing the spec from your own understanding — never "now write me
+  the spec" (that launders the chat's conclusions past the critic). The
+  litmus: if you can write testable acceptance criteria, you're done
+  chatting. Direction conclusions go to DIRECTION.md; useful sketches go in
+  `.tasks/<name>/notes.md`, referenced from the spec; and a brainstorm
+  session must never edit the repo — exploration is read-only, or its
+  leftovers become undeclared changes the next gate run trips over.
 - **Not a spec generator.** By design. See above.
 - **Not CI.** CI checks what's already committed; the gates run before
   anything is committed, per task, with scope and budget contracts CI knows
