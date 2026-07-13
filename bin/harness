@@ -68,6 +68,25 @@ ensure_wt() {
   fi
 }
 
+# bootstrap_wt <wt> — a fresh worktree has tracked files only; install the
+# repo's own declared dependencies (the lockfile names the tool). No lockfile
+# or no tool → skip silently; the repo declared nothing to install.
+bootstrap_wt() {
+  local w="$1" blog
+  blog="$td/report/bootstrap-$(basename "$w").log"
+  [ -d "$w/node_modules" ] && return 0
+  if [ -f "$w/package-lock.json" ] && command -v npm >/dev/null 2>&1; then
+    info "worktree bootstrap: npm ci (fresh checkout has no node_modules)"
+    (cd "$w" && npm ci) > "$blog" 2>&1 || die "worktree bootstrap failed — see $blog"
+  elif [ -f "$w/pnpm-lock.yaml" ] && command -v pnpm >/dev/null 2>&1; then
+    info "worktree bootstrap: pnpm install --frozen-lockfile"
+    (cd "$w" && pnpm install --frozen-lockfile) > "$blog" 2>&1 || die "worktree bootstrap failed — see $blog"
+  elif [ -f "$w/yarn.lock" ] && command -v yarn >/dev/null 2>&1; then
+    info "worktree bootstrap: yarn install --frozen-lockfile"
+    (cd "$w" && yarn install --frozen-lockfile) > "$blog" 2>&1 || die "worktree bootstrap failed — see $blog"
+  fi
+}
+
 # fan_out <feature-worktree> — parallel implementers for a multi-task plan;
 # join, combine into the feature worktree as uncommitted changes.
 fan_out() {
@@ -90,6 +109,7 @@ fan_out() {
   for s in $subs; do
     swt="$(dirname "$root")/$(basename "$root")-worktrees/$name--$s"
     ensure_wt "$swt" "task/$name--$s" "$base"
+    bootstrap_wt "$swt"
     info "  ↳ $s → $swt"
     HARNESS_SUBTASK="$s" "$adapter" implementer "$td" "$swt" \
       > "$td/report/implement-$s.out" 2>&1 &
@@ -237,6 +257,7 @@ case "$cmd" in
       ensure_wt "$wt" "task/$name"
       info "worktree: $wt (branch task/$name) — your checkout stays untouched"
     fi
+    bootstrap_wt "$wt"
     if [ "$(plan_tasks "$td/PLAN.md" | wc -l | tr -d ' ')" -gt 1 ]; then
       fan_out "$wt"
     else

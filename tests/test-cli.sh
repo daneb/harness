@@ -158,6 +158,30 @@ PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents"
 if [ "$RC" -ne 0 ]; then pass; else fail "split overwrote an existing task"; fi
 has "already exists"
 
+t "implement bootstraps a fresh worktree's dependencies from the lockfile"
+mkrepo; mktask y
+echo 'node_modules' > .gitignore
+echo '{"name":"r"}' > package.json
+echo '{"lockfileVersion":3}' > package-lock.json
+git add -A; git commit -qm deps
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/npm" <<'EOF'
+#!/bin/bash
+[ "$1" = "ci" ] && mkdir -p node_modules && echo stubbed > node_modules/.stub
+EOF
+chmod +x "$TESTTMP/bin/npm"
+cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
+#!/bin/bash
+echo done
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness implement y
+if [ "$RC" -eq 0 ]; then pass; else fail "implement failed: $OUT"; fi
+filehas "$TESTTMP/repo-worktrees/y/node_modules/.stub" "stubbed"
+hasfile .tasks/y/report/bootstrap-y.log
+
 t "implement runs in a worktree; the user's checkout stays untouched"
 mkrepo; mktask y
 touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
