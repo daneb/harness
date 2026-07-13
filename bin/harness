@@ -48,6 +48,15 @@ need_task() {
       if [ -n "$merged" ]; then
         info "WARNING: task '$name' was already merged ($merged) — did you mean another task?"
       fi
+      # Split-brain: a worktree exists but the main checkout has uncommitted
+      # non-metadata work the pipeline (which reviews the worktree) won't see.
+      if [ -d "$(wt_path)" ]; then
+        stray=$(git -C "$root" status --porcelain -uno \
+                | sed 's/^...//' | grep -vE '^(\.tasks/|decisions/)' | head -1 || true)
+        if [ -n "$stray" ]; then
+          info "WARNING: task '$name' has a worktree, but your main checkout has uncommitted changes ($stray, …) the pipeline cannot see — it operates on $(wt_path). Reconcile: work in the worktree, or 'git worktree remove' it to drive from main."
+        fi
+      fi
       ;;
   esac
 }

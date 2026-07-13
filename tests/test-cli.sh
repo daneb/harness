@@ -219,6 +219,17 @@ hasfile my-wip.txt                                       # user's wip survived
 if [ -d "$TESTTMP/repo-worktrees/y" ]; then fail "worktree not cleaned up"; else pass; fi
 run git branch --list "task/y"; if [ -z "$OUT" ]; then pass; else fail "task branch not deleted"; fi
 
+t "split-brain: warns when main is dirty but the task has a worktree"
+mkrepo; mktask y
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
+mkdir -p "$TESTTMP/bin"
+printf '#!/bin/bash\necho done\n' > "$TESTTMP/bin/kiro-cli"; chmod +x "$TESTTMP/bin/kiro-cli"
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  harness implement y >/dev/null 2>&1     # creates the worktree
+echo "hand edit" >> src/app.sh            # uncommitted work in main
+run harness gate g1 y
+has "has a worktree, but your main checkout has uncommitted changes"
+
 t "gating an already-merged task warns loudly"
 mkrepo; mktask y
 touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass .tasks/y/report/g2.pass \
