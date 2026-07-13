@@ -328,6 +328,16 @@ EOF
 run harness stats
 has "s1"; has "2.00"; has "3.50"; has "3m00s"; has "g2:1"; has "g2 1/2"
 
+t "stats backfills credits from transcripts for pre-parser events"
+mkrepo
+mkdir -p .tasks/old/report
+printf '{"ts":"t","phase":"implementer","model":"m","cost_usd":null,"duration_ms":60000}\n' > .tasks/old/report/events.jsonl
+printf 'noise\n Credits: 7.51 . Time: 4m\n' > .tasks/old/report/implementer-kiro.err
+printf 'transcript\n Credits: 7.51 . Time: 4m\n' > .tasks/old/report/implementer-transcript.kiro.txt
+printf ' Credits: 2.07 . Time: 2m\n' > .tasks/old/report/reviewer-kiro.err
+run harness stats
+has "9.58"   # 7.51 (deduped across err+transcript) + 2.07
+
 t "stats reports when no events exist"
 mkrepo
 no harness stats; has "no events"

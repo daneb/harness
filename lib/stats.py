@@ -8,7 +8,30 @@ caught. Usage: stats.py <repo_root>
 import glob
 import json
 import os
+import re
 import sys
+
+
+def transcript_credits(report_dir):
+    """Backfill for events that predate credits parsing: harvest the last
+    'Credits: N.NN' per kiro run from its preserved err/transcript files
+    (deduped per run — the same line can appear in both)."""
+    per_run = {}
+    files = glob.glob(os.path.join(report_dir, "*-kiro.err")) \
+          + glob.glob(os.path.join(report_dir, "*-transcript.kiro.txt"))
+    for f in files:
+        key = os.path.basename(f).replace("-kiro.err", "").replace("-transcript.kiro.txt", "")
+        last = None
+        try:
+            for line in open(f, errors="ignore"):
+                m = re.search(r"Credits: ([0-9.]+)", line)
+                if m:
+                    last = float(m.group(1))
+        except OSError:
+            continue
+        if last is not None:
+            per_run[key] = max(per_run.get(key, 0.0), last)
+    return sum(per_run.values())
 
 root = sys.argv[1]
 rows = []                 # (task, cost, agent_ms, runs, fails, fail_detail)
@@ -38,6 +61,8 @@ for ev in sorted(glob.glob(os.path.join(root, ".tasks", "*", "report", "events.j
             cost += d.get("cost_usd") or 0
             credits += d.get("credits") or 0
             agent_ms += d.get("duration_ms") or 0
+    if credits == 0:
+        credits = transcript_credits(os.path.dirname(ev))
     detail = " ".join("%s:%d" % (g, n) for g, n in sorted(fails.items()))
     rows.append((task, cost, credits, agent_ms, runs, sum(fails.values()), detail))
 
