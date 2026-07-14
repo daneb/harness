@@ -20,6 +20,7 @@ harness — gated agent pipeline (gates, not virtue)
   harness merge <task>        commit + decision record (requires G3 approval)
   harness gate <g> <task>     run one gate manually (g0|g1|g2|g2.5|g3)
   harness status <task>       show gate progress
+  harness diff <task>         show the task's changes from its own tree (no branch checkout)
   harness calibrate           reviewer verdicts vs your G3 decisions (TPR/TNR)
   harness stats               cost, duration, gate failure rates across tasks
   harness doctor              preflight: git, toolchain, adapter, dependencies
@@ -417,6 +418,18 @@ EOF2
     g="${1:-}"; [ -n "$g" ] || die "usage: harness gate <g0|g1|g2|g2.5|g3> <task>"
     need_task "${2:-}"
     run_gate "$g"
+    ;;
+  diff)
+    need_task "${1:-}"
+    [ -d "$td" ] || die "no such task: $name"
+    twd="$(task_wd)"
+    [ "$twd" = "$root" ] || info "task tree: $twd (branch task/$name)"
+    git -C "$twd" -c color.ui=always diff HEAD 2>/dev/null | ${PAGER:-cat}
+    untracked=$(git -C "$twd" ls-files --others --exclude-standard | sed -e 's/^"//' -e 's/"$//' | grep -vE '^(\.tasks/|decisions/)' || true)
+    if [ -n "$untracked" ]; then
+      echo "── New (untracked) files ──"
+      printf '%s\n' "$untracked" | sed 's/^/  + /'
+    fi
     ;;
   status)
     need_task "${1:-}"

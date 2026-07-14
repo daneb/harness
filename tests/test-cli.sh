@@ -34,6 +34,15 @@ t "status shows gate progress"
 mkrepo; mktask y; ok harness gate g0 y
 run harness status y; has "g0"; has "pass"; has "pending"
 
+t "diff shows the task's changes including untracked, from the task tree"
+mkrepo; mktask y
+printf 'changed line\n' >> src/app.sh
+printf 'brand new\n' > src/newfile.ts
+export PAGER=cat
+run harness diff y
+has "changed line"; has "src/newfile.ts"
+unset PAGER
+
 t "require_adapter fails loud on a bad adapter value"
 mkrepo; mktask y
 HARNESS_ADAPTER=kiro-cli run harness critique y
