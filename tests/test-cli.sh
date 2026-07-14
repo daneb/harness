@@ -206,6 +206,14 @@ echo "user junk" > scratch.txt                           # dirt in root, NOT in 
 ok harness gate g2 y                                     # scope check sees only the worktree
 rm scratch.txt
 
+t "merge refuses a detached worktree HEAD instead of losing work"
+git -C "$wt" checkout --detach >/dev/null 2>&1
+touch .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass
+echo "2026-07-13 by test" > .tasks/y/report/g3-approved
+printf '# R\n\nVERDICT: pass\n' > .tasks/y/report/review.md
+no harness merge y; has "not task/y"
+git -C "$wt" checkout task/y >/dev/null 2>&1   # reattach for the next test
+
 t "merge integrates the task branch, cleans up, preserves root work"
 echo "wip" > my-wip.txt                                  # user's unrelated uncommitted work
 touch .tasks/y/report/g2.5.pass .tasks/y/report/g3.pass

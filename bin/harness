@@ -355,6 +355,12 @@ EOF2
       sed -n '/^## Problem/,$p' "$td/SPEC.md"
     } > "$rec"
     if [ "$twd" != "$root" ]; then
+      # The worktree must be ON task/$name — a detached or switched HEAD (e.g.
+      # from a git-UI branch checkout) would make us merge the wrong ref and
+      # lose the uncommitted work silently.
+      cur=$(git -C "$twd" symbolic-ref -q --short HEAD || true)
+      [ "$cur" = "task/$name" ] \
+        || die "merge: worktree HEAD is '${cur:-detached}', not task/$name — your work is safe but unmergeable. Reattach: git -C $twd checkout task/$name"
       # Worktree flow: task metadata rides into history, commit on the task
       # branch, merge into the user's branch, clean up the sandbox.
       mkdir -p "$twd/.tasks"
