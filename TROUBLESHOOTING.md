@@ -125,6 +125,27 @@ its worktree; the pipeline reviews the worktree and won't see the main edits.
 Do the work in one place — in the worktree, or `git worktree remove` it to
 drive from main.
 
+### Does this task have a worktree? Do I need to check it out?
+A task only gets a worktree once it passes G1 (created at `harness implement`).
+Before that — or after you `git worktree remove` one — the task is driven from
+your **main checkout**: edits, gates, review, and merge all operate on main,
+and there's nothing to check out. Which is it? `harness status <task>` shows a
+worktree line if one exists; `git worktree list` is definitive. No line = work
+in main.
+
+### A concern came back — do I re-plan? re-implement? touch the worktree?
+Usually none of those. Route by where the defect lives, lowest rung first:
+- a code or test fix (e.g. "add this assertion") is implementation-level — fix
+  it in the tree and re-gate G2. This is most concerns.
+- re-plan only when the plan is wrong (wrong files/approach), re-gate G1.
+- re-spec only when the spec is wrong, re-approve and re-plan.
+A `concerns`/`blocking` verdict is not "start over" — `review_blocking = true`
+just halts the gate on any concern. And if the task has **no worktree** (you're
+driving from main), apply the fix by hand in main, then re-gate. Do NOT run
+`harness implement` on a no-worktree task whose work is uncommitted in main —
+it forks a fresh worktree from main's last *commit*, which doesn't include your
+uncommitted work, and the agent starts over in an empty tree.
+
 ### `merge: worktree HEAD is 'detached', not task/<name>`
 A git-UI branch checkout detached the worktree. Your work is safe but
 unmergeable until reattached: `git -C <worktree> checkout task/<name>`, then
