@@ -181,6 +181,7 @@ EOF
 chmod +x "$TESTTMP/bin/npm"
 cat > "$TESTTMP/bin/kiro-cli" <<'EOF'
 #!/bin/bash
+echo '# impl' >> src/app.sh   # a real change so G2 has something to gate
 echo done
 EOF
 chmod +x "$TESTTMP/bin/kiro-cli"

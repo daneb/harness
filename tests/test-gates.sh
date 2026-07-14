@@ -62,6 +62,10 @@ t "G2 refuses (exit 2) a repo with no toolchain"
 mkrepo notool; mktask x
 rc 2 "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "REFUSED"
 
+t "G2 refuses an empty diff — nothing to gate is not a pass"
+mkrepo; mktask x
+no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "no changes to gate"
+
 t "G2 refuses an out-of-scope change"
 mkrepo; mktask x; echo rogue > rogue.txt
 no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "outside declared scope: rogue.txt"
@@ -152,12 +156,14 @@ mkdir -p packages/a angular-like
 echo '{"name":"a","scripts":{"test":"echo sub tests ok"}}' > packages/a/package.json
 echo '{"name":"al","scripts":{"lint":"echo al lint ok"}}' > angular-like/package.json
 git add -A; git commit -qm pkgs
+echo '# ok' >> src/app.sh                       # a real change to gate
 ok "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"
 has "npm --prefix packages/a run test"; has "npm --prefix angular-like run lint"
 
 t "G2 fails when a repo check fails"
 mkrepo; mktask x; printf 'lint:\n\t@echo lint ok\ntest:\n\t@exit 1\n' > Makefile
 git add -A; git commit -qm mk
+echo '# ok' >> src/app.sh                        # a real change so we reach the checks
 no "$G/g2-diff.sh" "$PWD/.tasks/x" "$PWD"; has "check failed"
 
 t "G2 passes in-scope, in-budget work and runs the checks"

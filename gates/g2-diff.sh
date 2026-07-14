@@ -28,6 +28,14 @@ scope=$(plan_list "$plan" scope | sed -e 's/ (new)$//')
 changed=$(git -C "$root" status --porcelain -uall \
           | sed -e 's/^..[[:space:]]*//' -e 's/.* -> //' -e 's/^"//' -e 's/"$//' \
           | grep -vE '^(\.tasks/|decisions/|\.harness\.toml$)' || true)
+
+# Nothing to gate is not a pass — a task that changed nothing means the work
+# is elsewhere (committed, or in another tree), not that it's clean.
+if [ -z "$changed" ]; then
+  echo "G2: no changes to gate for task '$(basename "$td")' — this tree has nothing uncommitted." >&2
+  echo "G2: the work may be committed, or in another tree (split-brain). Check: git worktree list; harness diff $(basename "$td")." >&2
+  exit 1
+fi
 # in_scope <file>: exact entry match, or under a directory entry (trailing /)
 in_scope() {
   echo "$scope" | grep -qxF "$1" && return 0
