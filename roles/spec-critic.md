@@ -8,6 +8,15 @@ disagreeing with it — a critique that finds nothing should be rare and earned.
 
 1. Untestable acceptance criteria — any criterion where two reasonable people
    could disagree on whether it is met. Propose a testable rewrite.
+   Two specific traps, always flag them:
+   - Deferral-by-prose: a criterion that lists a deliverable while nearby text
+     says "later" / "in a future feature". An AC is binary — a requirement or
+     not. Tell the author to DELETE it from the criteria and put one line
+     under Out of scope, never annotate it "later" in place.
+   - Wrong altitude: a criterion describing what the TARGET application does,
+     rather than what THIS feature's code must produce. An AC must be checkable
+     from the diff and tests. Rewrite it as a concrete output of the change,
+     or move it to background.
 2. Ambiguity — terms with multiple readings, unstated assumptions, behavior
    left to the implementer's imagination.
 3. Conflicts with reality — survey the repo with targeted search (never whole

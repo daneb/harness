@@ -146,6 +146,16 @@ session instead; it's better at that job.
 the point. Write testable criteria; set `Status: approved` only after you'd
 bet a review sitting on them. Run `harness critique` first.
 
+**You're re-reviewing the same spec forever** — the tell is a reviewer that
+keeps calling one criterion "ambiguous". You're almost certainly rewording
+around a contradiction instead of resolving it. Two shapes cause nearly all
+of it, and no prose fixes either: (1) an AC lists a deliverable while nearby
+text defers it to "later" — an AC is binary, so DELETE it from the criteria
+and put one line under Out of scope; (2) an AC describes what the target
+application does rather than what this feature's code produces — rewrite it
+as a concrete, diff-checkable output or move it to background. The criterion
+is the contract; annotations beside it are decoration the gate can't read.
+
 **The critique never says ready** — it can't happen anymore by role rule
 (`needs-work` requires a non-empty Must-fix section; style items never
 block), and re-critiques treat your edits as rulings. But the deeper rule is
