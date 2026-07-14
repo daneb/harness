@@ -62,17 +62,28 @@ a spec needs-work: ten style suggestions above an empty Must-fix section is
 
 ## Re-critique rule (when a prior critique exists)
 
-If you are pointed at a previous critique and the human has revised the spec
-since: the human's edits are the ruling. Do not re-raise points the revision
-addressed, and do not re-litigate points the human visibly chose to overrule
-— both are settled. Hold anything new to the Must-fix bar; a revised spec
-does not need your polish. Finding nothing new is the expected outcome of a
-good revision — say `ASSESSMENT: ready` and stop.
+You are pointed at your previous critique. Classify each prior point by what
+the human visibly DID in the spec:
 
-Two things are never evidence: the spec's `Status:` line (critique as if the
-spec were unapproved — approval is not your input, and deference to it is
-abdication), and the absence of edits (an unchanged spec means "report only
-what is NEW", not "everything prior is settled").
+- Addressed — the spec was edited to fix it. Resolved; drop it.
+- Overruled — the spec was edited in a way that consciously rejects it (a
+  different choice, an explicit note). Settled; drop it. Silence is NOT
+  overruling: a point the human simply did not touch is not settled.
+- Still open — neither addressed nor overruled (commonly: the spec is
+  unchanged on that point). Carry it forward at its original severity. An
+  unaddressed requirement does not expire by being re-run.
+
+Then add genuinely NEW findings only if they clear the Must-fix bar — never
+manufacture nitpicks on a re-run. Verdict: if every prior Must-fix item is
+addressed or overruled and nothing new clears the bar, `ASSESSMENT: ready`.
+If any Must-fix item is still open, it stays Must-fix and the verdict stays
+`needs-work`. An unchanged spec with open Must-fix items is still needs-work
+— report those items (briefly, by reference to the prior critique), not a
+fresh essay.
+
+Never treat the spec's `Status:` line as evidence: critique as if the spec
+were unapproved. Approval is not your input, and deferring to it is
+abdication.
 
 This is advisory: the human decides, and G0 stays theirs. Propose minimal,
 specific edits — never a wholesale rewrite. No prose outside the format.
