@@ -41,6 +41,17 @@ need_task() {
   [ -n "$name" ] || die "usage: harness $cmd <task-name>"
   root="$(repo_root .)"
   td="$root/.tasks/$name"
+  # A command that operates on an existing task, given a name with no task
+  # directory, is a typo — say so and list the real tasks (don't let it fail
+  # later as a confusing "gate g0 has not passed").
+  case "$cmd" in
+    critique|split|plan|implement|review|approve|merge|gate|status|diff)
+      if [ ! -d "$td" ]; then
+        avail=$(cd "$root/.tasks" 2>/dev/null && for d in */; do [ -d "$d" ] && printf '%s ' "${d%/}"; done)
+        die "no such task: '$name'${avail:+ — tasks: $avail}"
+      fi
+      ;;
+  esac
   # Merged tasks are history, not targets — gating one judges today's tree
   # against a closed plan and produces nonsense violations.
   case "$cmd" in
@@ -421,7 +432,6 @@ EOF2
     ;;
   diff)
     need_task "${1:-}"
-    [ -d "$td" ] || die "no such task: $name"
     twd="$(task_wd)"
     [ "$twd" = "$root" ] || echo "task tree: $twd (branch task/$name)" >&2
     untracked=$(git -C "$twd" ls-files --others --exclude-standard | sed -e 's/^"//' -e 's/"$//' | grep -vE '^(\.tasks/|decisions/)' || true)
@@ -440,7 +450,6 @@ EOF2
     ;;
   status)
     need_task "${1:-}"
-    [ -d "$td" ] || die "no such task: $name"
     echo "task: $name"
     for g in $GATES; do
       if [ -f "$td/report/$g.pass" ]; then echo "  $g   ✓ pass"; else echo "  $g   · pending"; fi

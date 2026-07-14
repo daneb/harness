@@ -17,6 +17,11 @@ t "implement refuses when G1 has not passed"
 mkrepo; mktask y
 no harness implement y; has "advances only through gates"
 
+t "a typo'd task name says 'no such task' and lists real ones"
+mkrepo; mktask realtask
+no harness merge realtask-typo
+has "no such task: 'realtask-typo'"; has "realtask"
+
 t "gate command records pass markers and events"
 mkrepo; mktask y
 ok harness gate g0 y
