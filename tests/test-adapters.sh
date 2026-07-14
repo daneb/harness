@@ -9,6 +9,7 @@ filehas .tasks/x/PLAN.md "## Task: x"
 if grep -q "$(printf '\033')" .tasks/x/PLAN.md; then fail "ANSI escapes survived in PLAN.md"; else pass; fi
 filehas .tasks/x/report/events.jsonl '"adapter":"kiro"'
 filehas .tasks/x/report/events.jsonl '"credits":1.25'
+has "used 1.25 credits"                                  # per-run cost on stderr
 hasfile .tasks/x/report/planner-transcript.kiro.txt
 
 t "kiro planner/reviewer agent configs are read-only"
@@ -92,6 +93,7 @@ ok env PATH="$TESTTMP/bin:$PATH" "$A/claude.sh" planner "$PWD/.tasks/x" "$PWD"
 filehas .tasks/x/PLAN.md "## Task: x"
 filehas .tasks/x/report/events.jsonl '"model": "claude-stub"'
 filehas .tasks/x/report/events.jsonl '"cost_usd": 0.01'
+has "used \$0.0100"                                       # per-run cost on stderr
 hasfile .tasks/x/report/planner-transcript.jsonl
 
 t "stream_result.py fails loud on an error result"

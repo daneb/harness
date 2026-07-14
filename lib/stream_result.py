@@ -45,6 +45,9 @@ event = {
 with open(events, "a") as f:
     f.write(json.dumps(event) + "\n")
 
+secs = (result.get("duration_ms") or 0) // 1000
+sys.stderr.write("==> %s used $%.4f (%ds)\n" % (phase, result.get("total_cost_usd") or 0, secs))
+
 if result.get("is_error"):
     sys.exit("stream_result: agent returned an error result (see transcript)")
 

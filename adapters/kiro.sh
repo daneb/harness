@@ -86,7 +86,7 @@ done
 sub="${HARNESS_SUBTASK:-}"   # fan-out: which task of a multi-task plan
 
 run_kiro() {
-  local tsf="$td/report/$role${sub:+-$sub}-transcript.kiro.txt" t0 mjson esc full_prompt
+  local tsf="$td/report/$role${sub:+-$sub}-transcript.kiro.txt" t0 mjson esc full_prompt credits dur
   full_prompt="$(printf 'YOUR ROLE AND OUTPUT CONTRACT — follow exactly:\n\n%s\n\n---\n\nYour shell already runs at the repository root. Never prefix commands with cd — the command allowlist matches from the first word.\n\nTASK:\n%s' "$(cat "$sys")" "$prompt")"
   t0=$(date +%s)
   (cd "$wd" && "$KIRO_BIN" chat --no-interactive --agent "$agent" "$full_prompt") \
@@ -101,9 +101,11 @@ run_kiro() {
   # kiro prints "Credits: N.NN" in its output — the closest thing to cost it exposes
   credits=$(grep -ohE 'Credits: [0-9.]+' "$tsf" "$td/report/$role${sub:+-$sub}-kiro.err" 2>/dev/null \
             | tail -1 | awk '{print $2}' || true)
+  dur=$(( $(date +%s) - t0 ))
   printf '{"ts":"%s","phase":"%s","adapter":"kiro","model":%s,"cost_usd":null,"credits":%s,"duration_ms":%d}\n' \
-    "$(date +%Y-%m-%dT%H:%M:%S)" "$role" "$mjson" "${credits:-null}" "$(( ($(date +%s) - t0) * 1000 ))" \
+    "$(date +%Y-%m-%dT%H:%M:%S)" "$role" "$mjson" "${credits:-null}" "$(( dur * 1000 ))" \
     >> "$td/report/events.jsonl"
+  echo "==> $role${sub:+ [$sub]} used ${credits:-?} credits (${dur}s)" >&2
   esc=$(printf '\033')
   sed "s/${esc}\[[0-9;]*[a-zA-Z]//g" "$tsf"
 }
