@@ -5,7 +5,8 @@ orchestrating agent CLIs through **mechanical quality gates**. A convention
 plus a small CLI, not an application. See [HARNESS-PLAN.md](HARNESS-PLAN.md)
 for the full design — and read **[PHILOSOPHY.md](PHILOSOPHY.md)** before your
 first task: it explains why the harness will refuse you and how to respond
-effectively when it does.
+effectively when it does. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** is the
+symptom → fix reference for when something goes wrong.
 
 > **Gates, not virtue.** An agent cannot advance a phase; only a passing gate
 > (exit 0) can.
