@@ -38,10 +38,9 @@ t "diff shows the task's changes including untracked, from the task tree"
 mkrepo; mktask y
 printf 'changed line\n' >> src/app.sh
 printf 'brand new\n' > src/newfile.ts
-export PAGER=cat
-run harness diff y
+run harness diff y                                  # captured (non-tty) → plain, no pager
 has "changed line"; has "src/newfile.ts"
-unset PAGER
+if printf '%s' "$OUT" | grep -q "$(printf '\033')"; then fail "raw escape codes in piped diff"; else pass; fi
 
 t "require_adapter fails loud on a bad adapter value"
 mkrepo; mktask y

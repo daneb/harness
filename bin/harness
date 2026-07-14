@@ -423,12 +423,19 @@ EOF2
     need_task "${1:-}"
     [ -d "$td" ] || die "no such task: $name"
     twd="$(task_wd)"
-    [ "$twd" = "$root" ] || info "task tree: $twd (branch task/$name)"
-    git -C "$twd" -c color.ui=always diff HEAD 2>/dev/null | ${PAGER:-cat}
+    [ "$twd" = "$root" ] || echo "task tree: $twd (branch task/$name)" >&2
     untracked=$(git -C "$twd" ls-files --others --exclude-standard | sed -e 's/^"//' -e 's/"$//' | grep -vE '^(\.tasks/|decisions/)' || true)
-    if [ -n "$untracked" ]; then
-      echo "── New (untracked) files ──"
+    emit_untracked() {
+      [ -n "$untracked" ] || return 0
+      echo; echo "── New (untracked) files ──"
       printf '%s\n' "$untracked" | sed 's/^/  + /'
+    }
+    if [ ! -t 1 ]; then                                   # piped/redirected: clean plain text
+      git -C "$twd" diff HEAD 2>/dev/null; emit_untracked
+    elif command -v delta >/dev/null 2>&1; then           # terminal + delta: syntax-highlighted, self-paging
+      { git -C "$twd" diff HEAD 2>/dev/null; emit_untracked; } | delta
+    else                                                  # terminal: colored, paged
+      { git -C "$twd" -c color.ui=always diff HEAD 2>/dev/null; emit_untracked; } | ${PAGER:-less -R}
     fi
     ;;
   status)
