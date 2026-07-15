@@ -19,6 +19,7 @@ The harness is a **convention plus a small CLI, not an application**. It enforce
 - No workflow DSL or engine — dynamism lives in data (the plan), not in machinery
 - No persona/role frameworks (BMAD, SuperClaude) — roles are prompts plus permissions
 - v1 stays under ~1,500 lines total. If it grows past that, something is wrong.
+  (Raised to ~1,700 for v2 — see §9.6; the discipline holds, the ceiling moved once, in the open.)
 
 ---
 
@@ -199,7 +200,7 @@ Start with shell/just scripts. Promote hot paths to a small Rust or TypeScript b
 
 ## 9. Success criteria
 
-- v1 under ~1,500 lines
+- v1 under ~1,500 lines (met; v2 ceiling ~1,700 — §9.6)
 - A feature goes spec → merge with every gate exercised, on a real repo
 - Token usage per task measurably lower than naive full-file agent runs (log and compare)
 - A repo with no lint/test config is **refused**, not accommodated
@@ -207,6 +208,20 @@ Start with shell/just scripts. Promote hot paths to a small Rust or TypeScript b
 - You can hand the convention to another engineer with only PRINCIPLES.md and this plan
 
 ---
+
+## 9.6 Budget: raised to ~1,700 (decided 2026-07-15)
+
+The v1 ~1,500 target was met and held through the whole v1 build. v2 added,
+by deliberate choice, features that don't exist in v1: fan-out, worktree
+isolation, six guards (split-brain, detached-HEAD, empty-diff, merged-task,
+no-such-task, budget), `diff`, `adopt`, credits, DIRECTION, calibrate, stats.
+Consolidation-to-Python does NOT reclaim lines (Python boilerplate is heavier
+than dense shell — a tested finding), so the honest move is to raise the
+ceiling once, in the open, with this list as the reason — the same
+committed-bump-with-a-reason discipline the diff budget uses. This is the
+budget doing its job: it forced a conscious decision instead of silent growth.
+Isolation stays first prize (single-tree-by-default was rejected); `adopt` is
+the bridge that lets exploration happen in main while delivery stays isolated.
 
 ## 9.5 Remaining roadmap (written 2026-07-12; ordered)
 

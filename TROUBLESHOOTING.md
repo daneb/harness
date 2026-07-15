@@ -120,10 +120,14 @@ with `harness diff <task>` (reads the right tree, no navigation). Do NOT
 checkout the task branch in main to look — that detaches the worktree HEAD.
 
 ### `WARNING: task '<name>' has a worktree, but your main checkout has uncommitted changes`
-Split-brain: you edited tracked files in main while the task's work lives in
-its worktree; the pipeline reviews the worktree and won't see the main edits.
-Do the work in one place — in the worktree, or `git worktree remove` it to
-drive from main.
+Split-brain: you edited/explored in main while the task's work belongs in its
+worktree; the pipeline reviews the worktree and won't see the main edits. The
+clean fix is **`harness adopt <task>`** — it shows the main→worktree delta,
+asks, and moves your main work into the task's isolated worktree (worktrees
+share `.git`, so it's a shared-stash move; `.tasks/` metadata stays in main).
+Then gate/review/merge as normal. This is the intended flow: explore in main,
+`adopt`, deliver through the isolated tree. (Or, to drive from main instead,
+`git worktree remove` the worktree.)
 
 ### Does this task have a worktree? Do I need to check it out?
 A task only gets a worktree once it passes G1 (created at `harness implement`).

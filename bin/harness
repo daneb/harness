@@ -21,6 +21,7 @@ harness — gated agent pipeline (gates, not virtue)
   harness gate <g> <task>     run one gate manually (g0|g1|g2|g2.5|g3)
   harness status <task>       show gate progress
   harness diff <task>         show the task's changes from its own tree (no branch checkout)
+  harness adopt <task>        move work done in main into the task's worktree (explore in main, deliver isolated)
   harness calibrate           reviewer verdicts vs your G3 decisions (TPR/TNR)
   harness stats               cost, duration, gate failure rates across tasks
   harness doctor              preflight: git, toolchain, adapter, dependencies
@@ -45,7 +46,7 @@ need_task() {
   # directory, is a typo — say so and list the real tasks (don't let it fail
   # later as a confusing "gate g0 has not passed").
   case "$cmd" in
-    critique|split|plan|implement|review|approve|merge|gate|status|diff)
+    critique|split|plan|implement|review|approve|merge|gate|status|diff|adopt)
       if [ ! -d "$td" ]; then
         avail=$(cd "$root/.tasks" 2>/dev/null && for d in */; do [ -d "$d" ] && printf '%s ' "${d%/}"; done)
         die "no such task: '$name'${avail:+ — tasks: $avail}"
@@ -448,6 +449,27 @@ EOF2
       { git -C "$twd" -c color.ui=always diff HEAD 2>/dev/null; emit_untracked; } | ${PAGER:-less -R}
     fi
     ;;
+  adopt)
+    # Bridge: move exploration work done in main INTO the task's isolated
+    # worktree (worktrees share .git, so a main stash pops in the worktree).
+    # Isolation stays first prize; you can explore in main and still deliver
+    # through the isolated tree.
+    need_task "${1:-}"
+    wt="$(wt_path)"
+    [ -d "$wt" ] || die "adopt: task '$name' has no worktree — it's driven from main already; gate it directly, or 'harness implement $name' to create one"
+    moving=$(git -C "$root" status --porcelain -uall | grep -vE '(\.tasks/|decisions/|\.harness\.toml)' || true)
+    [ -n "$moving" ] || die "adopt: nothing uncommitted in main to move into $wt"
+    echo "These changes in main move into the task worktree ($wt):"
+    printf '%s\n' "$moving" | sed 's/^/  /'
+    printf "Move them into the worktree? [y/N] "
+    read -r ans || ans=""
+    case "$ans" in y|Y|yes) ;; *) die "adopt: cancelled — nothing moved";; esac
+    git -C "$root" stash push -u -m "harness-adopt-$name" -- '.' ':(exclude).tasks' ':(exclude)decisions' ':(exclude).harness.toml' >/dev/null \
+      || die "adopt: could not stash main's changes"
+    git -C "$wt" stash pop \
+      || die "adopt: conflict applying in $wt — resolve there; your work is safe in 'git stash' (shared across worktrees)"
+    info "adopted into $wt — main is clean; next: harness gate g2 $name"
+    ;;
   status)
     need_task "${1:-}"
     echo "task: $name"
@@ -540,7 +562,7 @@ EOF2
     if [ "$root" = "$HARNESS_HOME" ]; then
       b=$(cat "$HARNESS_HOME"/bin/harness "$HARNESS_HOME"/lib/*.sh "$HARNESS_HOME"/lib/*.py \
               "$HARNESS_HOME"/gates/*.sh "$HARNESS_HOME"/adapters/*.sh | wc -l | tr -d ' ')
-    echo "budget:  $b of ~1500 (bin+lib+gates+adapters — HARNESS-PLAN.md §9)"
+    echo "budget:  $b of ~1700 (bin+lib+gates+adapters — HARNESS-PLAN.md §9)"
     fi
     ;;
   help|-h|--help) usage ;;

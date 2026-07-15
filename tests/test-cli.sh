@@ -342,6 +342,22 @@ PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents"
 if [ "$RC" -eq 0 ]; then pass; else fail "cap=1 fan-out failed: $OUT"; fi
 filehas "$TESTTMP/repo-worktrees/y/src/beta.txt" "beta was here"
 
+t "adopt moves main's work into the task worktree, leaves main clean"
+mkrepo; mktask y
+git -C . worktree add -q -b task/y "$TESTTMP/repo-worktrees/y" HEAD
+echo 'work in main' >> src/app.sh          # code work in main
+echo 'meta' >> .tasks/y/report/note.txt    # metadata — must NOT move
+printf 'y\n' | run harness adopt y
+if [ "$RC" -eq 0 ]; then pass; else fail "adopt failed: $OUT"; fi
+filehas "$TESTTMP/repo-worktrees/y/src/app.sh" "work in main"   # moved to worktree
+run git -C . status --porcelain; if printf '%s' "$OUT" | grep -q 'src/app.sh'; then fail "code still in main"; else pass; fi
+hasfile .tasks/y/report/note.txt                                # metadata stayed
+
+t "adopt refuses when the task has no worktree"
+mkrepo; mktask y
+echo x >> src/app.sh
+no harness adopt y; has "no worktree"
+
 t "re-critique preserves the prior critique and points the agent at it"
 mkrepo; mktask y
 echo "old critique" > .tasks/y/report/spec-review.md
@@ -425,7 +441,7 @@ has "24.4k (243"   # exact total varies with the fixture repo's base files
 t "loc shows the self-budget inside the harness repo"
 cd "$HROOT" || exit 1
 run harness loc
-has "budget:"; has "1500"
+has "budget:"; has "1700"
 
 t "version prints version and commit"
 run harness version; has "harness $(cat "$HROOT/VERSION")"

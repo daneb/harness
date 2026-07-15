@@ -54,7 +54,8 @@ any of them is not a feature request; it is a different tool.
 6. **Judgment stays concentrated at G0 and G3.** Features that smear human
    attention across the middle phases — supervision UX, approval prompts
    mid-pipeline, notification streams — are rejected on principle.
-7. **Small stays small.** ~1,500 product lines, a four-key config, three-ish
+7. **Small stays small.** ~1,700 product lines (v1 was ~1,500; raised once, in
+   the open, for v2 scope — HARNESS-PLAN §9.6), a four-key config, three-ish
    roles. Every addition is argued against the budget, and deletion is a
    first-class operation.
 

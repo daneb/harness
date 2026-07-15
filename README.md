@@ -98,7 +98,8 @@ templates/         SPEC.md, AGENTS.md, PRINCIPLES.md, .harness.toml
 ```
 
 Per-repo config is [4 lines of TOML](templates/harness.toml). No other
-configuration exists. `harness loc` checks the ~1,500-line budget.
+configuration exists. `harness loc` checks the ~1,700-line budget (v1 was
+~1,500; raised once for v2 scope — HARNESS-PLAN.md §9.6).
 
 ## Development
 
