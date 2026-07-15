@@ -146,6 +146,19 @@ driving from main), apply the fix by hand in main, then re-gate. Do NOT run
 it forks a fresh worktree from main's last *commit*, which doesn't include your
 uncommitted work, and the agent starts over in an empty tree.
 
+### Applying a fix during or after review
+Two rules. (1) The fix goes in the task's own tree — if the task has a worktree
+(`harness status <task>`), edit the files under `<repo>-worktrees/<task>/`, not
+in main; a fix in the wrong tree is split-brain and the merge won't include it
+(the gate will stop you). (2) Changing the code invalidates the review that
+approved the *old* code, so re-open the pipeline from G2: `harness gate g2
+<task>` → `harness review <task>` → `harness approve` → `merge`. Never approve,
+then patch, then merge — that ships code no gate saw; the `harness review` step
+re-runs the reviewer and clears the stale approval. If the fix already landed in
+the wrong tree, move it into the task's tree (or `git worktree remove` the
+worktree to drive from main), then re-gate. (Single-tree mode, if enabled,
+removes the wrong-tree half of this entirely — the task lives in main.)
+
 ### `merge: worktree HEAD is 'detached', not task/<name>`
 A git-UI branch checkout detached the worktree. Your work is safe but
 unmergeable until reattached: `git -C <worktree> checkout task/<name>`, then
