@@ -8,8 +8,14 @@ die()  { echo "harness: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
 
 repo_root() {
-  git -C "${1:-.}" rev-parse --show-toplevel 2>/dev/null \
+  local d="${1:-.}" gitdir
+  git -C "$d" rev-parse >/dev/null 2>&1 \
     || die "not inside a git repository (the harness requires git)"
+  # Parent of the shared .git dir = the MAIN worktree, so task metadata (.tasks/)
+  # is canonical there whether harness is run from main or a linked worktree —
+  # a task is always looked up in one place, not wherever you happen to stand.
+  gitdir=$(cd "$d" && cd "$(git rev-parse --git-common-dir)" && pwd)
+  dirname "$gitdir"
 }
 
 # cfg <repo_root> <key> <default> — flat-key lookup in .harness.toml

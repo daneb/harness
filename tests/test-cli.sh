@@ -17,6 +17,13 @@ t "implement refuses when G1 has not passed"
 mkrepo; mktask y
 no harness implement y; has "advances only through gates"
 
+t "a task is found from inside a linked worktree (metadata canonical in main)"
+mkrepo; mktask y
+git -C . worktree add -q -b task/y "$TESTTMP/repo-worktrees/y" HEAD
+OUT="$(cd "$TESTTMP/repo-worktrees/y" && harness status y 2>&1)"; RC=$?
+if [ "$RC" -eq 0 ]; then pass; else fail "status from worktree failed: $OUT"; fi
+has "task: y"
+
 t "a typo'd task name says 'no such task' and lists real ones"
 mkrepo; mktask realtask
 no harness merge realtask-typo
