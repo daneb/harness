@@ -67,6 +67,9 @@ role defines — your stdout is saved verbatim as $td/PLAN.md.$crosstask"
   implementer)
     info "implementer (write access, scoped by G2) → working tree"
     prompt="Implement the task defined in $td/SPEC.md according to $td/PLAN.md. \
+Your working directory ($wd) is the repository checkout — write EVERY file \
+there, relative to it. NEVER write to an absolute path or a sibling directory; \
+that corrupts the isolated worktree. \
 Touch only files within your task's declared Scope. Run this repo's own \
 lint/tests before finishing. Leave all changes uncommitted."
     [ -f "$td/report/g3-feedback.md" ] && prompt="$prompt A previous attempt was \

@@ -169,6 +169,18 @@ A git-UI branch checkout detached the worktree. Your work is safe but
 unmergeable until reattached: `git -C <worktree> checkout task/<name>`, then
 merge. Avoid this by using `harness diff` instead of UI branch-hopping.
 
+### `implement: the agent wrote to your MAIN checkout instead of the worktree (isolation leak)`
+An agent (often a fan-out subtask) wrote files up in main via an absolute or
+`../../<repo>` path instead of its worktree — worktrees isolate directories but
+don't *confine* an agent, so one can escape. `implement` now detects this
+(snapshots main before/after) and refuses rather than gating a worktree that's
+missing the real work. Recover with **`harness adopt <task>`** — it pulls the
+leaked work from main into the task's worktree — then re-gate. (Containers, a
+future step, are the real confinement; until then this guard + the write-in-cwd
+prompt are the defense.) If both trees ended up with versions of the same files
+(e.g. stubs in the worktree, real impl in main), reconcile by hand: keep the
+real files, delete the stubs, then adopt or collapse to main.
+
 ### A task is invisible from main, or its `.tasks/` lives inside a worktree
 Cause: `harness` was run from *inside* a linked worktree, so it created and
 looked up the task there instead of in main. Fixed — the harness now resolves

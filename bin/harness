@@ -280,11 +280,20 @@ case "$cmd" in
       info "worktree: $wt (branch task/$name) — your checkout stays untouched"
     fi
     bootstrap_wt "$wt"
+    # Isolation leak guard: an agent can write outside its worktree (worktrees
+    # isolate, they don't confine). Snapshot main before/after; new non-metadata
+    # changes in main mean the agent escaped to it — refuse rather than gate a
+    # worktree that's missing the real work.
+    leak_before=$(git -C "$root" status --porcelain -uall | grep -vE '(\.tasks/|decisions/)' | sort || true)
     if [ "$(plan_tasks "$td/PLAN.md" | wc -l | tr -d ' ')" -gt 1 ]; then
       fan_out "$wt"
     else
       "$adapter" implementer "$td" "$wt"
     fi
+    leaked=$(comm -13 <(printf '%s\n' "$leak_before") <(git -C "$root" status --porcelain -uall | grep -vE '(\.tasks/|decisions/)' | sort || true) | sed 's/^/  /')
+    [ -z "$leaked" ] || die "implement: the agent wrote to your MAIN checkout instead of the worktree (isolation leak):
+$leaked
+Pull that work into the worktree with 'harness adopt $name', then re-gate. (TROUBLESHOOTING: isolation leak.)"
     run_gate g2
     info "next: harness review $name"
     ;;

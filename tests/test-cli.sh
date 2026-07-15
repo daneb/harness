@@ -203,6 +203,22 @@ if [ "$RC" -eq 0 ]; then pass; else fail "implement failed: $OUT"; fi
 filehas "$TESTTMP/repo-worktrees/y/node_modules/.stub" "stubbed"
 hasfile .tasks/y/report/bootstrap-y.log
 
+t "implement refuses when the agent leaks writes to main"
+mkrepo; mktask y
+touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
+mkdir -p "$TESTTMP/bin"
+cat > "$TESTTMP/bin/kiro-cli" <<EOF
+#!/bin/bash
+# simulate an agent escaping to main instead of writing in its worktree
+echo 'leaked impl' > "$TESTTMP/repo/src/leaked.ts"
+echo done
+EOF
+chmod +x "$TESTTMP/bin/kiro-cli"
+PATH="$TESTTMP/bin:$PATH" HARNESS_ADAPTER=kiro KIRO_AGENT_DIR="$TESTTMP/kagents" \
+  run harness implement y
+if [ "$RC" -ne 0 ]; then pass; else fail "leak to main not caught"; fi
+has "isolation leak"; has "src/leaked.ts"
+
 t "implement runs in a worktree; the user's checkout stays untouched"
 mkrepo; mktask y
 touch .tasks/y/report/g0.pass .tasks/y/report/g1.pass
