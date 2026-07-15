@@ -4,11 +4,12 @@ Symptom → cause → fix, for problems hit in real use. Search for the message
 you're seeing. For *why* a gate refuses (the design), see PHILOSOPHY.md; this
 is the operational companion.
 
-Two rules cover most confusion: **specs instruct agents, manifests instruct
+Three rules cover most confusion: **specs instruct agents, manifests instruct
 gates, the plan's Scope is the file contract** — a problem usually means the
-wrong one of those three is being edited. And **a task's work lives in its
+wrong one of those three is being edited. **A task's work lives in its
 worktree, not your main checkout** — "my changes vanished" is almost always
-you looking in the wrong tree.
+you looking in the wrong tree. And **run `harness` from your main checkout,
+never from inside a worktree** — the tool navigates to the worktree for you.
 
 ---
 
@@ -167,6 +168,21 @@ removes the wrong-tree half of this entirely — the task lives in main.)
 A git-UI branch checkout detached the worktree. Your work is safe but
 unmergeable until reattached: `git -C <worktree> checkout task/<name>`, then
 merge. Avoid this by using `harness diff` instead of UI branch-hopping.
+
+### A task is invisible from main, or its `.tasks/` lives inside a worktree
+Cause: `harness` was run from *inside* a linked worktree, so it created and
+looked up the task there instead of in main. Fixed — the harness now resolves
+task metadata to the main checkout no matter where you invoke it — so pull the
+latest. The rule to keep regardless: **run `harness` from your main checkout,
+never from inside a worktree directory.** The tool navigates to the worktree
+for you — that is what `task_wd`, `harness diff`, and `harness adopt` are for;
+you never `cd` into a worktree yourself.
+
+To rescue a task already stuck in a worktree (metadata + committed code there),
+from main: `git merge --squash --no-commit task/<name>` brings its metadata and
+code into main as uncommitted changes (stash any conflicting main edits first);
+then `git worktree remove` + `git branch -D` the worktree, and gate it
+single-tree from main.
 
 ### `WARNING: task '<name>' was already merged`
 A merged task's `.tasks/` dir persists in history, so it stays a valid
