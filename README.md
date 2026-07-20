@@ -26,6 +26,76 @@ SPEC ──G0──▶ PLAN ──G1──▶ IMPLEMENT ──G2──▶ REVIEW
 | G2.5 | Fresh-context, read-only reviewer verdict: `pass` / `concerns` / `blocking` |
 | G3 | A human reads the diff. Interactive only — never automated |
 
+### Logical flow
+
+The one-liner above is the happy path. The real shape includes the failure
+loops — every fail routes back to a phase, never past a gate:
+
+```mermaid
+flowchart TD
+    spec["You write SPEC.md"] --> crit["harness critique — optional<br>fresh-context attack, advisory"]
+    crit -->|"Must-fix items: edit the spec"| spec
+    spec -->|"you set Status: approved"| G0{"G0<br>approved spec with<br>acceptance criteria"}
+    G0 -->|fail| spec
+    G0 -->|pass| plan["Planner agent writes PLAN.md"]
+    plan --> G1{"G1<br>real files and symbols,<br>disjoint scopes"}
+    G1 -->|"fail: re-plan or fix PLAN.md by hand"| plan
+    G1 -->|pass| impl["Implementer agent edits the task<br>worktree, branch task/name"]
+    impl --> G2{"G2<br>repo's own lint/typecheck/tests,<br>diff budget, scope"}
+    G2 -->|"exit 2: repo declares no quality bar"| ref["Refused — add lint/test<br>config, commit, retry"]
+    ref -.-> G2
+    G2 -->|fail| impl
+    G2 -->|pass| rev["Fresh-context reviewer<br>writes review.md"]
+    rev --> G25{"G2.5<br>pass / concerns / blocking"}
+    G25 -->|"blocking — or concerns while review_blocking"| impl
+    G25 -->|pass| G3{"G3<br>you read the diff —<br>interactive, never automated"}
+    G3 -->|"reject: reason fed to next implement"| impl
+    G3 -->|approve| merge["harness merge<br>commit task branch, merge --no-ff,<br>decision record"]
+    merge --> wb["Writeback: decisions/ —<br>plus Obsidian vault if HARNESS_VAULT"]
+```
+
+### One task, end to end
+
+Who does what — you, the CLI, the gates, the agent runtime, and the task's
+sandbox worktree. Every gate answers with an exit code (0 pass, 1 fail,
+2 refused); a non-zero stops the command right there:
+
+```mermaid
+sequenceDiagram
+    actor You
+    participant H as harness
+    participant G as gates
+    participant A as agent CLI (claude / kiro)
+    participant W as task worktree
+
+    You->>H: harness spec add-retry
+    H-->>You: SPEC.md scaffold — you write it
+    You->>H: harness critique add-retry (optional)
+    H->>A: spec-critic, fresh context, read-only
+    A-->>You: critique — fix, then set Status: approved
+    You->>H: harness plan add-retry
+    H->>G: G0 — spec approved?
+    H->>A: planner, read-only
+    A-->>H: PLAN.md
+    H->>G: G1 — real paths, disjoint scopes?
+    You->>H: harness implement add-retry
+    H->>W: create worktree, branch task/add-retry
+    H->>A: implementer — edits allowed, commits not
+    A->>W: code + tests
+    H->>G: G2 — repo's lint/typecheck/tests, budget, scope
+    You->>H: harness review add-retry
+    H->>A: fresh-context reviewer, gets diff.patch + g2.log
+    A-->>H: review.md with VERDICT line
+    H->>G: G2.5 — verdict gate
+    You->>H: harness approve add-retry
+    H-->>You: pager session — full diff + new-file contents
+    You-->>H: approve, or reject with a one-line reason
+    You->>H: harness merge add-retry
+    H->>W: commit on task/add-retry
+    H->>H: merge --no-ff into your branch, write decisions/ record
+    H-->>You: merged — worktree and task branch removed
+```
+
 ## Quickstart
 
 ```sh
@@ -46,8 +116,37 @@ harness approve add-retry      # G3: you read the diff
 harness merge add-retry        # commit + decisions/ record
 ```
 
-`harness status <task>` shows gate progress; `harness gate g2 <task>` re-runs a
-single gate. Re-running a phase invalidates its gate and everything downstream.
+## Commands
+
+Pipeline, in order:
+
+| Command | What it does |
+|---|---|
+| `harness init [dir]` | set up `.tasks/`, `decisions/`, AGENTS.md, `.harness.toml` |
+| `harness spec <task>` | scaffold `.tasks/<task>/SPEC.md` — then you write it and approve it |
+| `harness critique <task>` | fresh-context agent attacks your draft spec (advisory, pre-G0) |
+| `harness split <task>` | stage a bundled spec as N draft specs (clerical; you approve each) |
+| `harness plan <task>` | G0 → planner agent writes PLAN.md → G1 |
+| `harness implement <task>` | implementer agent edits the task worktree → G2 |
+| `harness review <task>` | fresh-context reviewer writes review.md → G2.5 |
+| `harness approve <task>` | G3 — you read the diff (interactive, never automated) |
+| `harness merge <task>` | commit + decision record + writeback (requires G3 approval) |
+
+Around the pipeline:
+
+| Command | What it does |
+|---|---|
+| `harness status <task>` | show gate progress |
+| `harness gate <g> <task>` | run one gate manually (`g0`, `g1`, `g2`, `g2.5`, `g3`) |
+| `harness diff <task>` | show the task's changes from its own tree (no branch checkout) |
+| `harness adopt <task>` | move work done in main into the task's worktree — explore in main, deliver isolated |
+| `harness calibrate` | reviewer verdicts vs your G3 decisions (TPR/TNR confusion matrix) |
+| `harness stats` | cost, duration, gate failure rates across tasks |
+| `harness doctor` | preflight: git, toolchain, adapter, dependencies |
+| `harness loc` | current repo's product/test/doc line counts vs the budget |
+| `harness version` | version + commit |
+
+Re-running a phase invalidates its gate and everything downstream.
 
 ## Adapters
 
